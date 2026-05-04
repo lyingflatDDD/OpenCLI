@@ -50,17 +50,36 @@ cli({
                     };
                 }
                 const headText = head.textContent.trim().replace(/\\s+/g, ' ');
+                // Shop name: dianping puts it as "【芈重山老火锅(五道口店)】" at
+                // the head of document.title (full-width 【】, not ASCII []).
+                // Try selectors first, then fall back to title parsing.
                 const titleEl = document.querySelector('.shop-name, .shop-head h2, .shop-head h1');
-                const name = titleEl?.textContent?.trim() || (document.title || '').split(/[\\[\\]]/)[1] || '';
+                let name = titleEl?.textContent?.trim() || '';
+                if (!name) {
+                    const t = document.title || '';
+                    const m = t.match(/【([^】]+)】/);
+                    if (m) name = m[1].trim();
+                }
                 const ratingText = document.querySelector('.star-score')?.textContent?.trim() || '';
                 const features = Array.from(document.querySelectorAll('.shop-feature')).map((f) => f.textContent.trim()).filter(Boolean);
                 const address = document.querySelector('.desc-info')?.textContent?.trim() || '';
                 const subwayMatch = headText.match(/距(?:地铁)?[^\\s]+?步行\\d+m/);
                 const subway = subwayMatch ? subwayMatch[0] : '';
 
+                // Reviews: prefer .reviews / .review-num selector — its text is
+                // "21241条" cleanly. Whitespace-collapsed headText fuses the
+                // rating "4.8" with review digits ("4.821241条"), so a
+                // head-wide /\\d+条/ regex captures "4.821241" and rounds to 5.
+                const reviewEl = document.querySelector('.reviews, .review-num, .reviewCount, .reviewCountSentence');
+                let reviewsRaw = reviewEl?.textContent?.trim() || '';
+                if (!reviewsRaw) {
+                    const titleReviewEl = document.querySelector('.review-title');
+                    const titleM = titleReviewEl?.textContent?.match(/评价\\(([\\d.,万]+)\\)/);
+                    if (titleM) reviewsRaw = titleM[1];
+                }
+
                 // Shop-head text holds price + cuisine + district + rank.
                 const priceMatch = headText.match(/[¥￥]\\s*\\d+(?:\\.\\d+)?/);
-                const reviewsMatch = headText.match(/(\\d+(?:[\\.,]\\d+)?(?:万)?)\\s*条/);
 
                 // Try to read score breakdown ("口味:4.8 环境:4.8 服务:4.8 食材:4.9").
                 const breakdown = {};
@@ -80,7 +99,7 @@ cli({
                     ok: true,
                     name,
                     rating: ratingText,
-                    reviewsRaw: reviewsMatch?.[1] || '',
+                    reviewsRaw,
                     priceRaw: priceMatch?.[0] || '',
                     breakdown,
                     features,
