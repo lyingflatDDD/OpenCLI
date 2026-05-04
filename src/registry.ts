@@ -205,8 +205,9 @@ function normalizeCommand(cmd: RawCliCommand): CliCommand {
 
 function assertCommandAccess(cmd: Pick<RawCliCommand, 'site' | 'name'> & { access?: unknown }): asserts cmd is RawCliCommand {
   if (cmd.access === 'read' || cmd.access === 'write') return;
-  const key = `${cmd.site}/${cmd.name}`;
-  throw new Error(`Command ${key} must declare access: 'read' | 'write'`);
+  // Backward compatibility: local/user-written adapters created before access
+  // was mandatory may omit the field. Default to 'read' instead of crashing.
+  (cmd as Record<string, unknown>).access = 'read';
 }
 
 export function registerCommand(cmd: RawCliCommand): void {

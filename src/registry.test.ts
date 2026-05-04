@@ -102,11 +102,14 @@ describe('cli() registration', () => {
     expect(getRegistry().get('test-registry/plain-default')?.defaultFormat).toBe('plain');
   });
 
-  it('rejects commands without explicit access metadata', () => {
-    expect(() => cli({
+  it('defaults access to read when not specified (backward compat)', () => {
+    const cmd = cli({
       site: 'test-registry',
       name: 'missing-access',
-    } as any)).toThrow("Command test-registry/missing-access must declare access: 'read' | 'write'");
+      description: 'no access field',
+      args: [],
+    } as any);
+    expect(cmd.access).toBe('read');
   });
 });
 
