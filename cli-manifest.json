@@ -13266,6 +13266,154 @@
     "navigateBefore": false
   },
   {
+    "site": "openreview",
+    "name": "paper",
+    "description": "Show full metadata for a single OpenReview paper",
+    "domain": "openreview.net",
+    "strategy": "public",
+    "browser": false,
+    "args": [
+      {
+        "name": "id",
+        "type": "str",
+        "required": true,
+        "positional": true,
+        "help": "OpenReview note id (e.g. \"5sRnsubyAK\")"
+      }
+    ],
+    "columns": [
+      "id",
+      "title",
+      "authors",
+      "keywords",
+      "venue",
+      "venueid",
+      "primary_area",
+      "abstract",
+      "pdate",
+      "pdf",
+      "url"
+    ],
+    "type": "js",
+    "modulePath": "openreview/paper.js",
+    "sourceFile": "openreview/paper.js"
+  },
+  {
+    "site": "openreview",
+    "name": "reviews",
+    "description": "Show full review thread (paper + reviews + decisions) for an OpenReview forum",
+    "domain": "openreview.net",
+    "strategy": "public",
+    "browser": false,
+    "args": [
+      {
+        "name": "forum",
+        "type": "str",
+        "required": true,
+        "positional": true,
+        "help": "OpenReview forum id (same as paper id)"
+      },
+      {
+        "name": "max-length",
+        "type": "int",
+        "default": 4000,
+        "required": false,
+        "help": "Per-row text truncation (min 200)"
+      }
+    ],
+    "columns": [
+      "type",
+      "author",
+      "rating",
+      "confidence",
+      "text"
+    ],
+    "type": "js",
+    "modulePath": "openreview/reviews.js",
+    "sourceFile": "openreview/reviews.js"
+  },
+  {
+    "site": "openreview",
+    "name": "search",
+    "description": "Search OpenReview papers by free-text query",
+    "domain": "openreview.net",
+    "strategy": "public",
+    "browser": false,
+    "args": [
+      {
+        "name": "query",
+        "type": "str",
+        "required": true,
+        "positional": true,
+        "help": "Search keyword (e.g. \"diffusion model\")"
+      },
+      {
+        "name": "limit",
+        "type": "int",
+        "default": 25,
+        "required": false,
+        "help": "Max results (max 50)"
+      }
+    ],
+    "columns": [
+      "rank",
+      "id",
+      "title",
+      "authors",
+      "venue",
+      "pdate",
+      "url"
+    ],
+    "type": "js",
+    "modulePath": "openreview/search.js",
+    "sourceFile": "openreview/search.js"
+  },
+  {
+    "site": "openreview",
+    "name": "venue",
+    "description": "List papers at an OpenReview venue (e.g. \"ICLR 2024 oral\" or full invitation id)",
+    "domain": "openreview.net",
+    "strategy": "public",
+    "browser": false,
+    "args": [
+      {
+        "name": "venue",
+        "type": "str",
+        "required": true,
+        "positional": true,
+        "help": "Venue name (\"ICLR 2024 oral\") or invitation (\"ICLR.cc/2025/Conference/-/Submission\")"
+      },
+      {
+        "name": "limit",
+        "type": "int",
+        "default": 25,
+        "required": false,
+        "help": "Max results (max 200)"
+      },
+      {
+        "name": "offset",
+        "type": "int",
+        "default": 0,
+        "required": false,
+        "help": "Pagination offset"
+      }
+    ],
+    "columns": [
+      "rank",
+      "id",
+      "title",
+      "authors",
+      "keywords",
+      "primary_area",
+      "pdate",
+      "pdf",
+      "url"
+    ],
+    "type": "js",
+    "modulePath": "openreview/venue.js",
+    "sourceFile": "openreview/venue.js"
+  },
+  {
     "site": "paperreview",
     "name": "feedback",
     "description": "Submit feedback for a paperreview.ai review token",
