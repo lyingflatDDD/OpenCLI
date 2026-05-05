@@ -8,7 +8,7 @@
  * - User profile:     /bbs/space-uid-<uid>.html  or  /bbs/space-username-<name>.html
  * - Search:           /bbs/search.php?mod=forum  (COOKIE — guests get an alert page)
  */
-import { CliError, AuthRequiredError, ArgumentError } from '@jackwener/opencli/errors';
+import { AuthRequiredError, ArgumentError, CommandExecutionError } from '@jackwener/opencli/errors';
 
 export const BASE = 'https://www.1point3acres.com/bbs';
 
@@ -17,13 +17,22 @@ export const BASE = 'https://www.1point3acres.com/bbs';
  * Throws ArgumentError on non-positive / non-integer / out-of-range input.
  */
 export function normalizeLimit(value, defaultValue, maxValue, label = 'limit') {
+    const limit = normalizePositiveInteger(value, defaultValue, label);
+    if (limit > maxValue) {
+        throw new ArgumentError(`${label} must be <= ${maxValue}`);
+    }
+    return limit;
+}
+
+/** Validate a positive integer argument without silently flooring/clamping. */
+export function normalizePositiveInteger(value, defaultValue, label = 'value', { min = 1 } = {}) {
     const raw = value ?? defaultValue;
     const limit = Number(raw);
     if (!Number.isInteger(limit) || limit <= 0) {
         throw new ArgumentError(`${label} must be a positive integer`);
     }
-    if (limit > maxValue) {
-        throw new ArgumentError(`${label} must be <= ${maxValue}`);
+    if (limit < min) {
+        throw new ArgumentError(`${label} must be >= ${min}`);
     }
     return limit;
 }
@@ -32,18 +41,23 @@ const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (
 
 /** Fetch a GBK-encoded Discuz page and return decoded UTF-8 HTML. */
 export async function fetchHtml(url, { headers = {}, cookie = '' } = {}) {
-    const res = await fetch(url, {
-        headers: {
-            'User-Agent': UA,
-            'Accept': 'text/html,application/xhtml+xml',
-            'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-            ...(cookie ? { Cookie: cookie } : {}),
-            ...headers,
-        },
-        redirect: 'follow',
-    });
+    let res;
+    try {
+        res = await fetch(url, {
+            headers: {
+                'User-Agent': UA,
+                'Accept': 'text/html,application/xhtml+xml',
+                'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+                ...(cookie ? { Cookie: cookie } : {}),
+                ...headers,
+            },
+            redirect: 'follow',
+        });
+    } catch (error) {
+        throw new CommandExecutionError(`1point3acres request failed: ${error?.message || error}`);
+    }
     if (!res.ok) {
-        throw new CliError('FETCH_ERROR', `HTTP ${res.status} ${res.statusText} from ${url}`);
+        throw new CommandExecutionError(`1point3acres request failed: HTTP ${res.status} ${res.statusText} from ${url}`);
     }
     const buf = await res.arrayBuffer();
     return new TextDecoder('gbk').decode(buf);

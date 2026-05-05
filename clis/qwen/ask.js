@@ -1,5 +1,5 @@
 import { cli, Strategy } from '@jackwener/opencli/registry';
-import { CommandExecutionError, TimeoutError } from '@jackwener/opencli/errors';
+import { ArgumentError, CommandExecutionError, TimeoutError } from '@jackwener/opencli/errors';
 import {
     QIANWEN_DOMAIN,
     QIANWEN_URL,
@@ -38,8 +38,11 @@ cli({
     columns: ['Role', 'Text'],
     func: async (page, kwargs) => {
         const prompt = String(kwargs.prompt || '').trim();
-        if (!prompt) throw new CommandExecutionError('prompt is required');
-        const timeout = Math.max(15, parseInt(kwargs.timeout, 10) || 120);
+        if (!prompt) throw new ArgumentError('prompt is required');
+        const timeout = Number(kwargs.timeout ?? 120);
+        if (!Number.isInteger(timeout) || timeout <= 0) {
+            throw new ArgumentError('timeout must be a positive integer');
+        }
         const startFresh = normalizeBooleanFlag(kwargs.new, false);
         const useThink = normalizeBooleanFlag(kwargs.think, false);
         const useResearch = normalizeBooleanFlag(kwargs.research, false);

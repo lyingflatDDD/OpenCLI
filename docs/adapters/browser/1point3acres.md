@@ -54,11 +54,11 @@ Use `opencli 1point3acres forums` to see the full list.
 | Command | Columns |
 |---------|---------|
 | `hot` / `latest` / `digest` / `forum` | `rank, tid, title, forum, author, replies, views, lastReplyTime, url` |
-| `thread` | `floor, author, posted, content, url` |
-| `user` | `field, value` (key/value pairs) |
-| `forums` | `fid, name, category, url` |
-| `search` | `rank, tid, title, forum, author, postedTime, url` |
-| `notifications` | `kind, who, summary, time, url` |
+| `thread` | `floor, pid, author, postTime, content, url` |
+| `user` | `uid, username, group, credits, rice, posts, threads, digests, registerTime, lastAccess, profileUrl` |
+| `forums` | `fid, name, url` |
+| `search` | `rank, tid, title, forum, author, replies, views, postTime, url` |
+| `notifications` | `index, from, summary, time, threadUrl` |
 
 ## Prerequisites
 
@@ -73,4 +73,5 @@ Use `opencli 1point3acres forums` to see the full list.
 - The site serves GBK-encoded HTML; the adapter decodes to UTF-8 internally
 - `tid` (thread id) is the canonical handle that pipes a listing row into `thread` for the full content
 - Public endpoints serve rendered HTML, so heavy bot traffic may hit Discuz challenge / login gates — fall back to a logged-in session if `hot` / `latest` start returning empty rows
-- `--limit` is validated upfront and rejected with `ArgumentError` if non-positive or above 50 (the page yields ~50 rows max) — no silent clamp
+- Listing `--limit` values are validated upfront and rejected with `ArgumentError` if non-positive or above 50 (the page yields ~50 rows max) — no silent clamp
+- `thread --page`, `thread --limit`, `thread --contentLimit`, and `notifications --limit` also reject invalid values explicitly instead of silently flooring them

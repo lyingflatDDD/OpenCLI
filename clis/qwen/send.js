@@ -1,5 +1,5 @@
 import { cli, Strategy } from '@jackwener/opencli/registry';
-import { CommandExecutionError } from '@jackwener/opencli/errors';
+import { ArgumentError, CommandExecutionError } from '@jackwener/opencli/errors';
 import {
     QIANWEN_DOMAIN,
     authRequired,
@@ -30,7 +30,7 @@ cli({
     columns: ['Status', 'Prompt'],
     func: async (page, kwargs) => {
         const prompt = String(kwargs.prompt || '').trim();
-        if (!prompt) throw new CommandExecutionError('prompt is required');
+        if (!prompt) throw new ArgumentError('prompt is required');
         const startFresh = normalizeBooleanFlag(kwargs.new, false);
         const useThink = normalizeBooleanFlag(kwargs.think, false);
         const useResearch = normalizeBooleanFlag(kwargs.research, false);

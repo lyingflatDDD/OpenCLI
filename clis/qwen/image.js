@@ -2,7 +2,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { cli, Strategy } from '@jackwener/opencli/registry';
 import { saveBase64ToFile } from '@jackwener/opencli/utils';
-import { CommandExecutionError, TimeoutError } from '@jackwener/opencli/errors';
+import { ArgumentError, CommandExecutionError, EmptyResultError, TimeoutError } from '@jackwener/opencli/errors';
 import {
     QIANWEN_DOMAIN,
     authRequired,
@@ -112,11 +112,14 @@ cli({
     columns: ['Status', 'File', 'Link'],
     func: async (page, kwargs) => {
         const prompt = String(kwargs.prompt || '').trim();
-        if (!prompt) throw new CommandExecutionError('prompt is required');
+        if (!prompt) throw new ArgumentError('prompt is required');
         const outputDir = String(kwargs.op || '~/Pictures/qianwen').replace(/^~\//, `${os.homedir()}/`);
         const startFresh = normalizeBooleanFlag(kwargs.new, true);
         const skipDownload = normalizeBooleanFlag(kwargs.sd, false);
-        const timeout = Math.max(30, parseInt(kwargs.timeout, 10) || 180);
+        const timeout = Number(kwargs.timeout ?? 180);
+        if (!Number.isInteger(timeout) || timeout <= 0) {
+            throw new ArgumentError('timeout must be a positive integer');
+        }
 
         await ensureOnQianwen(page);
         await dismissLoginModal(page);
@@ -151,7 +154,7 @@ cli({
 
         const urls = waitResult.urls;
         if (skipDownload) {
-            return [{ Status: '🎨 generated', File: '-', Link: link }];
+            return [{ Status: '🎨 generated', File: null, Link: link }];
         }
 
         const stamp = Date.now();
@@ -160,8 +163,7 @@ cli({
             const url = urls[i];
             const asset = await fetchImageAsset(page, url);
             if (!asset?.ok) {
-                results.push({ Status: `⚠️ fetch-failed(${asset?.status || '?'})`, File: '-', Link: link });
-                continue;
+                throw new CommandExecutionError(`Failed to fetch generated Qianwen image ${i + 1}: status=${asset?.status || '?'}`);
             }
             const suffix = urls.length > 1 ? `_${i + 1}` : '';
             const ext = extFromMime(asset.mime);
@@ -170,7 +172,7 @@ cli({
             results.push({ Status: '✅ saved', File: displayPath(filePath), Link: link });
         }
         if (!results.length) {
-            return [{ Status: '⚠️ no-images', File: '-', Link: link }];
+            throw new EmptyResultError('qwen image', 'No generated images were available to download.');
         }
         return results;
     },

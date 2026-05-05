@@ -4,7 +4,8 @@
  * /bbs/home.php?mod=space&do=notice&view=interactive  needs login cookie.
  */
 import { cli, Strategy } from '@jackwener/opencli/registry';
-import { fetchHtml, decodeEntities, getCookie, stripHtml, truncate, BASE } from './utils.js';
+import { AuthRequiredError, EmptyResultError } from '@jackwener/opencli/errors';
+import { fetchHtml, decodeEntities, getCookie, stripHtml, truncate, normalizePositiveInteger, BASE } from './utils.js';
 
 cli({
     site: '1point3acres',
@@ -28,17 +29,16 @@ cli({
         const html = await fetchHtml(url, { cookie, headers: { Referer: `${BASE}/` } });
 
         if (/<title>提示信息/.test(html) && /请登录/.test(html)) {
-            const { AuthRequiredError } = await import('@jackwener/opencli/errors');
             throw new AuthRequiredError('www.1point3acres.com', '请先登录一亩三分地');
         }
 
-        // "No notifications" state — surface a clear sentinel row.
+        // "No notifications" is a real empty result, not a synthetic data row.
         if (/暂时没有提醒内容/.test(html)) {
-            return [{ index: 0, from: '', summary: '暂时没有提醒内容', time: '', threadUrl: '' }];
+            throw new EmptyResultError('1point3acres notifications', '暂时没有提醒内容');
         }
 
         const rows = [];
-        const limit = Math.max(1, Number(args.limit) || 20);
+        const limit = normalizePositiveInteger(args.limit, 20, 'limit');
 
         // Pattern 1: standard Discuz <dl class="cl">…</dl> block per notice.
         const dlRe = /<dl class="[^"]*cl[^"]*"[^>]*>([\s\S]*?)<\/dl>/g;

@@ -6,7 +6,7 @@
  * Users can be queried by numeric uid or by username (both routes are public).
  */
 import { cli, Strategy } from '@jackwener/opencli/registry';
-import { ArgumentError, CliError } from '@jackwener/opencli/errors';
+import { ArgumentError, EmptyResultError } from '@jackwener/opencli/errors';
 import { fetchHtml, decodeEntities, BASE } from './utils.js';
 
 cli({
@@ -33,7 +33,7 @@ cli({
 
         const html = await fetchHtml(url);
         if (/<title>提示信息/.test(html) && /(没有找到|不存在)/.test(html)) {
-            throw new CliError('USER_NOT_FOUND', `用户 "${who}" 不存在`);
+            throw new EmptyResultError('1point3acres user', `用户 "${who}" 不存在`);
         }
 
         const pick = (re) => {

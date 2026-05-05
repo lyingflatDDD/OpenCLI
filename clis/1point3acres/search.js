@@ -7,7 +7,7 @@
  * long as we pass the session cookie along.
  */
 import { cli, Strategy } from '@jackwener/opencli/registry';
-import { ArgumentError } from '@jackwener/opencli/errors';
+import { ArgumentError, EmptyResultError } from '@jackwener/opencli/errors';
 import { fetchHtml, parseSearchList, assertNotGuestAlert, getCookie, decodeEntities, normalizeLimit, BASE } from './utils.js';
 
 cli({
@@ -52,12 +52,9 @@ cli({
         if (items.length === 0) {
             const hint = html.match(/<p>([^<]*?抱歉[^<]*?)<\/p>/);
             if (hint) {
-                return [{
-                    rank: 0, tid: '', title: decodeEntities(hint[1].trim()),
-                    forum: '', author: '', replies: 0, views: 0, postTime: '', url: '',
-                }];
+                throw new EmptyResultError('1point3acres search', decodeEntities(hint[1].trim()));
             }
-            return [];
+            throw new EmptyResultError('1point3acres search', `No results for "${query}"`);
         }
         return items.slice(0, limit).map((t, i) => ({
             rank: i + 1,

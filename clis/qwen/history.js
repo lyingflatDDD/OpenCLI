@@ -1,5 +1,5 @@
 import { cli, Strategy } from '@jackwener/opencli/registry';
-import { ArgumentError } from '@jackwener/opencli/errors';
+import { ArgumentError, CommandExecutionError, EmptyResultError } from '@jackwener/opencli/errors';
 import {
     QIANWEN_DOMAIN,
     authRequired,
@@ -44,11 +44,11 @@ cli({
         if (!result.ok) {
             if (result.status === 401 || result.status === 403) throw authRequired();
             if (!result.sessions.length) {
-                return [{ Index: 0, Title: `API failed (status=${result.status}) ${result.error || ''}`.trim(), Updated: '', Url: '' }];
+                throw new CommandExecutionError(`Qianwen history API failed (status=${result.status}) ${result.error || ''}`.trim());
             }
         }
         if (!result.sessions.length) {
-            return [{ Index: 0, Title: 'No Qianwen conversations found.', Updated: '', Url: '' }];
+            throw new EmptyResultError('qwen history', 'No Qianwen conversations found.');
         }
         return result.sessions.slice(0, limit).map((s, i) => ({
             Index: i + 1,

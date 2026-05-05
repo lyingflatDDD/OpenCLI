@@ -308,7 +308,10 @@ export async function setFeatureToggle(page, feature, enabled) {
 }
 
 export async function getSessionListFromApi(page, limit = 30) {
-    const capped = Math.min(Math.max(1, limit || 30), 100);
+    const pageSize = Number(limit ?? 30);
+    if (!Number.isInteger(pageSize) || pageSize <= 0 || pageSize > 100) {
+        throw new CommandExecutionError('Qianwen history page_size must be an integer between 1 and 100');
+    }
     const result = await page.evaluate(`(async () => {
     try {
       const utdid = (document.cookie.match(/(?:^|;\\s*)b-user-id=([^;]+)/)?.[1])
@@ -329,7 +332,7 @@ export async function getSessionListFromApi(page, limit = 30) {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ page_num: 1, page_size: ${capped}, page_no: 1 }),
+        body: JSON.stringify({ page_num: 1, page_size: ${pageSize}, page_no: 1 }),
       });
       const text = await res.text();
       let body = null;

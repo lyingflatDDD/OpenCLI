@@ -6,8 +6,8 @@
  * just the main post, and larger limits walk down the thread.
  */
 import { cli, Strategy } from '@jackwener/opencli/registry';
-import { ArgumentError, CliError } from '@jackwener/opencli/errors';
-import { fetchHtml, decodeEntities, stripHtml, truncate, BASE } from './utils.js';
+import { ArgumentError, EmptyResultError } from '@jackwener/opencli/errors';
+import { fetchHtml, decodeEntities, stripHtml, truncate, normalizePositiveInteger, BASE } from './utils.js';
 
 function extract(html, regex, group = 1) {
     const m = html.match(regex);
@@ -26,7 +26,7 @@ cli({
         { name: 'tid', required: true, positional: true, help: '帖子 ID（数字，见 `hot`/`latest` 返回的 tid）' },
         { name: 'page', type: 'int', default: 1, help: '楼层分页页码（默认 1）' },
         { name: 'limit', type: 'int', default: 10, help: '返回楼层条数（默认 10，含主楼）' },
-        { name: 'contentLimit', type: 'int', default: 400, help: '每楼正文截断长度（默认 400 字符）' },
+        { name: 'contentLimit', type: 'int', default: 400, help: '每楼正文截断长度（默认 400 字符，最少 50）' },
     ],
     columns: ['floor', 'pid', 'author', 'postTime', 'content', 'url'],
     func: async (args) => {
@@ -34,16 +34,16 @@ cli({
         if (!/^\d+$/.test(tid)) {
             throw new ArgumentError('tid must be a numeric thread id');
         }
-        const page = Math.max(1, Number(args.page) || 1);
-        const limit = Math.max(1, Number(args.limit) || 10);
-        const contentLimit = Math.max(50, Number(args.contentLimit) || 400);
+        const page = normalizePositiveInteger(args.page, 1, 'page');
+        const limit = normalizePositiveInteger(args.limit, 10, 'limit');
+        const contentLimit = normalizePositiveInteger(args.contentLimit, 400, 'contentLimit', { min: 50 });
 
         const url = `${BASE}/thread-${tid}-${page}-1.html`;
         const html = await fetchHtml(url);
 
         // Sanity: real thread page will contain postlist + at least one post div.
         if (!/id="postlist"/.test(html) && !/id="post_\d+"/.test(html)) {
-            throw new CliError('THREAD_NOT_FOUND', `帖子 ${tid} 不存在或被删除`);
+            throw new EmptyResultError('1point3acres thread', `帖子 ${tid} 不存在或被删除`);
         }
 
         // Split posts: each post block is bounded by <div id="post_<PID>">…</div> next post or postlist end.
@@ -109,6 +109,9 @@ cli({
             rows[0].content = title ? `【${title}】\n${rows[0].content}` : rows[0].content;
         }
 
+        if (!rows.length) {
+            throw new EmptyResultError('1point3acres thread', `帖子 ${tid} 第 ${page} 页没有可读取楼层`);
+        }
         return rows;
     },
 });

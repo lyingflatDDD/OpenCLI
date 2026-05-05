@@ -448,7 +448,7 @@
         "type": "int",
         "default": 400,
         "required": false,
-        "help": "每楼正文截断长度（默认 400 字符）"
+        "help": "每楼正文截断长度（默认 400 字符，最少 50）"
       }
     ],
     "columns": [

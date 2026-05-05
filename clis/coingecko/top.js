@@ -1,6 +1,6 @@
 // coingecko top — top coins by market cap.
 import { cli, Strategy } from '@jackwener/opencli/registry';
-import { ArgumentError, CliError } from '@jackwener/opencli/errors';
+import { ArgumentError, CommandExecutionError, EmptyResultError } from '@jackwener/opencli/errors';
 
 cli({
   site: 'coingecko',
@@ -32,10 +32,22 @@ cli({
     url.searchParams.set('page', '1');
     url.searchParams.set('sparkline', 'false');
 
-    const resp = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
-    if (!resp.ok) throw new CliError('HTTP_ERROR', `coingecko top failed: HTTP ${resp.status}`);
-    const data = await resp.json();
-    if (!Array.isArray(data) || data.length === 0) throw new CliError('NO_DATA', 'coingecko returned no market data');
+    let resp;
+    try {
+      resp = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+    } catch (error) {
+      throw new CommandExecutionError(`coingecko top request failed: ${error?.message || error}`);
+    }
+    if (!resp.ok) throw new CommandExecutionError(`coingecko top failed: HTTP ${resp.status}`);
+    let data;
+    try {
+      data = await resp.json();
+    } catch (error) {
+      throw new CommandExecutionError(`coingecko returned malformed JSON: ${error?.message || error}`);
+    }
+    if (data?.error) throw new CommandExecutionError(`coingecko returned error: ${data.error}`);
+    if (!Array.isArray(data)) throw new CommandExecutionError('coingecko returned an unexpected response');
+    if (data.length === 0) throw new EmptyResultError('coingecko top', 'coingecko returned no market data');
 
     return data.map((c) => ({
       rank: c.market_cap_rank,

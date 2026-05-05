@@ -93,8 +93,8 @@ opencli qwen image "a tiny robot" --sd true
 | `history` | `Index, Title, Updated, Url` |
 | `read` | `Role, Text` |
 | `ask` | `Role, Text` |
-| `send` | `Status, Url` |
-| `new` | `Status, Url` |
+| `send` | `Status, Prompt` |
+| `new` | `Status` |
 | `image` | `Status, File, Link` |
 
 ## Prerequisites
@@ -105,7 +105,7 @@ opencli qwen image "a tiny robot" --sd true
 
 ## Notes
 
-- `read` works without login (guest mode), but `history`, `notifications`, and most `write` flows require an authenticated session
+- `read` works without login (guest mode), but `history` and most `write` flows require an authenticated session
 - `ask` waits for the streaming reply to finish; `send` returns immediately after submission
 - DeepThink (`--think`) and DeepResearch (`--research`) toggle the corresponding composer chips before submitting
 - Generated image files are timestamped to avoid overwriting prior runs
