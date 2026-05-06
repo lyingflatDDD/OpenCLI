@@ -1958,6 +1958,41 @@
     "sourceFile": "bbc/news.js"
   },
   {
+    "site": "bbc",
+    "name": "topic",
+    "description": "BBC News headlines for a specific section (RSS feed)",
+    "access": "read",
+    "domain": "www.bbc.com",
+    "strategy": "public",
+    "browser": false,
+    "args": [
+      {
+        "name": "topic",
+        "type": "str",
+        "required": true,
+        "positional": true,
+        "help": "Section name (world / business / politics / health / education / science_and_environment / technology / entertainment_and_arts)"
+      },
+      {
+        "name": "limit",
+        "type": "int",
+        "default": 20,
+        "required": false,
+        "help": "Max headlines (1-50)"
+      }
+    ],
+    "columns": [
+      "rank",
+      "title",
+      "description",
+      "pubDate",
+      "url"
+    ],
+    "type": "js",
+    "modulePath": "bbc/topic.js",
+    "sourceFile": "bbc/topic.js"
+  },
+  {
     "site": "bilibili",
     "name": "comments",
     "description": "获取 B站视频评论（使用官方 API + WBI 签名）",
@@ -4960,6 +4995,43 @@
   },
   {
     "site": "coingecko",
+    "name": "categories",
+    "description": "Crypto categories ranked by aggregated market cap",
+    "access": "read",
+    "domain": "api.coingecko.com",
+    "strategy": "public",
+    "browser": false,
+    "args": [
+      {
+        "name": "sort",
+        "type": "str",
+        "default": "market_cap_desc",
+        "required": false,
+        "help": "Sort order (market_cap_desc / market_cap_asc / name_desc / name_asc / market_cap_change_24h_desc / market_cap_change_24h_asc)"
+      },
+      {
+        "name": "limit",
+        "type": "int",
+        "default": 20,
+        "required": false,
+        "help": "Number of categories (1-100; CoinGecko returns ~120 max)"
+      }
+    ],
+    "columns": [
+      "rank",
+      "id",
+      "name",
+      "marketCap",
+      "volume24h",
+      "marketCapChange24hPct",
+      "top3Coins"
+    ],
+    "type": "js",
+    "modulePath": "coingecko/categories.js",
+    "sourceFile": "coingecko/categories.js"
+  },
+  {
+    "site": "coingecko",
     "name": "coin",
     "description": "Fetch a single cryptocurrency's market data by CoinGecko id (e.g. bitcoin, ethereum).",
     "access": "read",
@@ -5006,6 +5078,77 @@
     "type": "js",
     "modulePath": "coingecko/coin.js",
     "sourceFile": "coingecko/coin.js"
+  },
+  {
+    "site": "coingecko",
+    "name": "exchanges",
+    "description": "Top crypto exchanges by 24h BTC trading volume",
+    "access": "read",
+    "domain": "api.coingecko.com",
+    "strategy": "public",
+    "browser": false,
+    "args": [
+      {
+        "name": "limit",
+        "type": "int",
+        "default": 20,
+        "required": false,
+        "help": "Number of exchanges (1-250, CoinGecko per_page upper bound)"
+      },
+      {
+        "name": "page",
+        "type": "int",
+        "default": 1,
+        "required": false,
+        "help": "Page number (1-based)"
+      }
+    ],
+    "columns": [
+      "rank",
+      "id",
+      "name",
+      "trustScore",
+      "volume24hBtc",
+      "country",
+      "yearEstablished",
+      "url"
+    ],
+    "type": "js",
+    "modulePath": "coingecko/exchanges.js",
+    "sourceFile": "coingecko/exchanges.js"
+  },
+  {
+    "site": "coingecko",
+    "name": "global",
+    "description": "Aggregate crypto market stats: total market cap, volume, dominance",
+    "access": "read",
+    "domain": "api.coingecko.com",
+    "strategy": "public",
+    "browser": false,
+    "args": [
+      {
+        "name": "currency",
+        "type": "string",
+        "default": "usd",
+        "required": false,
+        "help": "Quote currency for total market cap / volume (usd, cny, eur, jpy, ...)"
+      }
+    ],
+    "columns": [
+      "currency",
+      "totalMarketCap",
+      "totalVolume24h",
+      "marketCapChange24hPct",
+      "btcDominancePct",
+      "ethDominancePct",
+      "activeCryptocurrencies",
+      "markets",
+      "ongoingIcos",
+      "updatedAt"
+    ],
+    "type": "js",
+    "modulePath": "coingecko/global.js",
+    "sourceFile": "coingecko/global.js"
   },
   {
     "site": "coingecko",
@@ -5383,6 +5526,52 @@
   },
   {
     "site": "dblp",
+    "name": "author",
+    "description": "List dblp publications by a given author (newest first; resolves to top PID match)",
+    "access": "read",
+    "domain": "dblp.org",
+    "strategy": "public",
+    "browser": false,
+    "args": [
+      {
+        "name": "author",
+        "type": "str",
+        "required": false,
+        "positional": true,
+        "help": "Author name (e.g. \"Yoshua Bengio\"). Optional when --pid is given."
+      },
+      {
+        "name": "pid",
+        "type": "str",
+        "required": false,
+        "help": "Canonical dblp PID (e.g. \"56/953\"). Bypasses author search."
+      },
+      {
+        "name": "limit",
+        "type": "int",
+        "default": 20,
+        "required": false,
+        "help": "Max publications (1-200)"
+      }
+    ],
+    "columns": [
+      "rank",
+      "key",
+      "title",
+      "authors",
+      "venue",
+      "year",
+      "type",
+      "doi",
+      "pid",
+      "url"
+    ],
+    "type": "js",
+    "modulePath": "dblp/author.js",
+    "sourceFile": "dblp/author.js"
+  },
+  {
+    "site": "dblp",
     "name": "paper",
     "aliases": [
       "detail",
@@ -5606,6 +5795,45 @@
     "modulePath": "deepseek/status.js",
     "sourceFile": "deepseek/status.js",
     "navigateBefore": false
+  },
+  {
+    "site": "devto",
+    "name": "latest",
+    "description": "Newest dev.to articles (firehose, all tags)",
+    "access": "read",
+    "domain": "dev.to",
+    "strategy": "public",
+    "browser": false,
+    "args": [
+      {
+        "name": "limit",
+        "type": "int",
+        "default": 20,
+        "required": false,
+        "help": "Articles per page (1-100)"
+      },
+      {
+        "name": "page",
+        "type": "int",
+        "default": 1,
+        "required": false,
+        "help": "Page number (1-based)"
+      }
+    ],
+    "columns": [
+      "rank",
+      "id",
+      "title",
+      "author",
+      "tags",
+      "reactions",
+      "comments",
+      "published",
+      "url"
+    ],
+    "type": "js",
+    "modulePath": "devto/latest.js",
+    "sourceFile": "devto/latest.js"
   },
   {
     "site": "devto",
@@ -9486,6 +9714,38 @@
   },
   {
     "site": "hf",
+    "name": "paper",
+    "description": "Hugging Face paper detail by arXiv id (full title / summary / authors / AI keywords)",
+    "access": "read",
+    "domain": "huggingface.co",
+    "strategy": "public",
+    "browser": false,
+    "args": [
+      {
+        "name": "id",
+        "type": "str",
+        "required": true,
+        "positional": true,
+        "help": "arXiv id (e.g. \"1706.03762\") — same value HF uses to mirror the paper"
+      }
+    ],
+    "columns": [
+      "id",
+      "title",
+      "authors",
+      "publishedAt",
+      "upvotes",
+      "aiKeywords",
+      "summary",
+      "aiSummary",
+      "url"
+    ],
+    "type": "js",
+    "modulePath": "hf/paper.js",
+    "sourceFile": "hf/paper.js"
+  },
+  {
+    "site": "hf",
     "name": "top",
     "description": "Top upvoted Hugging Face papers",
     "access": "read",
@@ -12764,6 +13024,46 @@
   },
   {
     "site": "lobsters",
+    "name": "domain",
+    "description": "Lobste.rs stories submitted from a specific domain",
+    "access": "read",
+    "domain": "lobste.rs",
+    "strategy": "public",
+    "browser": false,
+    "args": [
+      {
+        "name": "domain",
+        "type": "str",
+        "required": true,
+        "positional": true,
+        "help": "Source domain (e.g. github.com, arxiv.org, blog.cloudflare.com)"
+      },
+      {
+        "name": "limit",
+        "type": "int",
+        "default": 20,
+        "required": false,
+        "help": "Number of stories (1-25 — single page)"
+      }
+    ],
+    "columns": [
+      "rank",
+      "id",
+      "title",
+      "score",
+      "author",
+      "comments",
+      "created_at",
+      "tags",
+      "submission_url",
+      "comments_url"
+    ],
+    "type": "js",
+    "modulePath": "lobsters/domain.js",
+    "sourceFile": "lobsters/domain.js"
+  },
+  {
+    "site": "lobsters",
     "name": "hot",
     "description": "Lobste.rs hottest stories",
     "access": "read",
@@ -13118,6 +13418,43 @@
     "modulePath": "medium/search.js",
     "sourceFile": "medium/search.js",
     "navigateBefore": "https://medium.com"
+  },
+  {
+    "site": "medium",
+    "name": "tag",
+    "description": "Latest Medium articles tagged with a given keyword (RSS feed)",
+    "access": "read",
+    "domain": "medium.com",
+    "strategy": "public",
+    "browser": false,
+    "args": [
+      {
+        "name": "tag",
+        "type": "str",
+        "required": true,
+        "positional": true,
+        "help": "Lowercase tag slug (e.g. \"programming\", \"machine-learning\")"
+      },
+      {
+        "name": "limit",
+        "type": "int",
+        "default": 20,
+        "required": false,
+        "help": "Max articles (1-25 — single RSS page)"
+      }
+    ],
+    "columns": [
+      "rank",
+      "title",
+      "author",
+      "description",
+      "categories",
+      "published",
+      "url"
+    ],
+    "type": "js",
+    "modulePath": "medium/tag.js",
+    "sourceFile": "medium/tag.js"
   },
   {
     "site": "medium",
@@ -17666,6 +18003,97 @@
     "type": "js",
     "modulePath": "stackoverflow/user.js",
     "sourceFile": "stackoverflow/user.js"
+  },
+  {
+    "site": "steam",
+    "name": "app",
+    "description": "Steam storefront detail for a single app id",
+    "access": "read",
+    "domain": "store.steampowered.com",
+    "strategy": "public",
+    "browser": false,
+    "args": [
+      {
+        "name": "id",
+        "type": "str",
+        "required": true,
+        "positional": true,
+        "help": "Numeric Steam app id (e.g. \"620\" for Portal 2)"
+      },
+      {
+        "name": "currency",
+        "type": "str",
+        "default": "us",
+        "required": false,
+        "help": "Storefront country code (e.g. us / cn / jp / de)"
+      }
+    ],
+    "columns": [
+      "id",
+      "name",
+      "type",
+      "isFree",
+      "releaseDate",
+      "developers",
+      "publishers",
+      "price",
+      "currency",
+      "metacritic",
+      "recommendations",
+      "genres",
+      "categories",
+      "shortDescription",
+      "website",
+      "url"
+    ],
+    "type": "js",
+    "modulePath": "steam/app.js",
+    "sourceFile": "steam/app.js"
+  },
+  {
+    "site": "steam",
+    "name": "search",
+    "description": "Search the Steam storefront by name keyword",
+    "access": "read",
+    "domain": "store.steampowered.com",
+    "strategy": "public",
+    "browser": false,
+    "args": [
+      {
+        "name": "query",
+        "type": "str",
+        "required": true,
+        "positional": true,
+        "help": "Search keyword (e.g. \"portal\", \"stardew\")"
+      },
+      {
+        "name": "limit",
+        "type": "int",
+        "default": 20,
+        "required": false,
+        "help": "Max results (1-50)"
+      },
+      {
+        "name": "currency",
+        "type": "str",
+        "default": "us",
+        "required": false,
+        "help": "Storefront country code (e.g. us / cn / jp / de)"
+      }
+    ],
+    "columns": [
+      "rank",
+      "id",
+      "name",
+      "price",
+      "currency",
+      "metascore",
+      "platforms",
+      "url"
+    ],
+    "type": "js",
+    "modulePath": "steam/search.js",
+    "sourceFile": "steam/search.js"
   },
   {
     "site": "steam",

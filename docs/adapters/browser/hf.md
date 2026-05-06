@@ -7,6 +7,7 @@
 | Command | Description |
 |---------|-------------|
 | `opencli hf top` | Top upvoted Hugging Face papers |
+| `opencli hf paper <arxivId>` | Single paper detail (title / authors / summary / AI keywords / upvotes) |
 | `opencli hf models` | Top Hugging Face models (downloads / likes / trending / freshness) |
 | `opencli hf datasets` | Top Hugging Face datasets |
 
@@ -15,6 +16,10 @@
 ```bash
 # Today's top papers
 opencli hf top --limit 10
+
+# Single paper detail by arXiv id (mirrors HF's paper page)
+opencli hf paper 1706.03762         # Attention Is All You Need
+opencli hf paper 2005.14165         # GPT-3 paper
 
 # All papers (no limit)
 opencli hf top --all
@@ -47,6 +52,14 @@ opencli hf top -f json
 | `--all` | Return all papers, ignoring limit |
 | `--date` | Date in `YYYY-MM-DD` format (defaults to most recent) |
 | `--period` | Time period: `daily`, `weekly`, or `monthly` (default: daily) |
+
+### `paper` Options
+
+| Option | Description |
+|--------|-------------|
+| `id` (positional) | arXiv id (e.g. `1706.03762`, optionally with version suffix `v3`) |
+
+Returns one row with `id, title, authors, publishedAt, upvotes, aiKeywords, summary, aiSummary, url`. The `summary` is the original arXiv abstract; `aiSummary` and `aiKeywords` are HF's AI-generated metadata (may be empty for older or non-curated papers). Returns `EmptyResultError` if HF has no paper page for that id.
 
 ### `models` Options
 
