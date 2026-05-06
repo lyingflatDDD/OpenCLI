@@ -3,7 +3,7 @@
 // Hits the registration index `api.nuget.org/v3/registration5-semver1/<id>/index.json`.
 // The id path segment must be lowercase per NuGet's CDN routing.
 import { cli, Strategy } from '@jackwener/opencli/registry';
-import { EmptyResultError } from '@jackwener/opencli/errors';
+import { CommandExecutionError, EmptyResultError } from '@jackwener/opencli/errors';
 import { NUGET_REGISTRATION_BASE, joinAuthors, joinTags, nugetFetch, requirePackageId } from './utils.js';
 
 cli({
@@ -40,17 +40,31 @@ cli({
         // for older packages. Inline is the common case for everything published in
         // the last few years. We follow stub pages once each — at most ~5 round-trips.
         const allEntries = [];
-        for (const page of pages) {
+        for (const [pageIndex, page] of pages.entries()) {
             let pageItems = Array.isArray(page?.items) ? page.items : null;
             if (!pageItems) {
                 // Stub page → fetch the leaf.
                 const pageUrl = typeof page?.['@id'] === 'string' ? page['@id'] : null;
-                if (!pageUrl) continue;
+                if (!pageUrl) {
+                    throw new CommandExecutionError(
+                        `nuget package registration page ${pageIndex + 1} is missing @id for package "${id}"`,
+                    );
+                }
                 const leaf = await nugetFetch(pageUrl, 'nuget package page');
-                pageItems = Array.isArray(leaf?.items) ? leaf.items : [];
+                if (!Array.isArray(leaf?.items)) {
+                    throw new CommandExecutionError(
+                        `nuget package registration leaf ${pageUrl} did not include an items array`,
+                    );
+                }
+                pageItems = leaf.items;
             }
             for (const it of pageItems) {
-                if (it && typeof it === 'object') allEntries.push(it);
+                if (!it || typeof it !== 'object' || !it.catalogEntry || typeof it.catalogEntry !== 'object') {
+                    throw new CommandExecutionError(
+                        `nuget package registration page ${pageIndex + 1} contains a malformed version entry`,
+                    );
+                }
+                allEntries.push(it);
             }
         }
         if (!allEntries.length) {

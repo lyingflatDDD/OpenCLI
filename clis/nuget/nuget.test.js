@@ -84,4 +84,28 @@ describe('nuget package adapter', () => {
             url: 'https://www.nuget.org/packages/Newtonsoft.Json/13.0.3',
         });
     });
+
+    it('follows registration stub pages instead of silently dropping old versions', async () => {
+        const fetchMock = vi.fn()
+            .mockResolvedValueOnce(new Response(JSON.stringify({
+                items: [{ '@id': 'https://api.nuget.org/v3/registration5-semver1/newtonsoft.json/page/1.json' }],
+            }), { status: 200 }))
+            .mockResolvedValueOnce(new Response(JSON.stringify({
+                items: [
+                    { catalogEntry: { id: 'Newtonsoft.Json', version: '1.0.0', published: '2010-01-01T00:00:00Z' } },
+                    { catalogEntry: { id: 'Newtonsoft.Json', version: '2.0.0', published: '2011-01-01T00:00:00Z' } },
+                ],
+            }), { status: 200 }));
+        vi.stubGlobal('fetch', fetchMock);
+        const rows = await cmd.func({ id: 'Newtonsoft.Json' });
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+        expect(rows.map((r) => r.version)).toEqual(['2.0.0', '1.0.0']);
+    });
+
+    it('fails fast on malformed stub pages to avoid partial version history', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
+            items: [{ lower: '1.0.0', upper: '2.0.0' }],
+        }), { status: 200 })));
+        await expect(cmd.func({ id: 'Newtonsoft.Json' })).rejects.toThrow(CommandExecutionError);
+    });
 });
