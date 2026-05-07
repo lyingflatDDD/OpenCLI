@@ -6,11 +6,6 @@ import './quote.js';
 import { createPageMock } from '../test-utils.js';
 
 describe('twitter quote helpers', () => {
-    it('extracts tweet ids from both user and i/status URLs', () => {
-        expect(__test__.extractTweetId('https://x.com/alice/status/2040254679301718161?s=20')).toBe('2040254679301718161');
-        expect(__test__.extractTweetId('https://x.com/i/status/2040318731105313143')).toBe('2040318731105313143');
-    });
-
     it('builds the quote composer URL with the source tweet attached as ?url=...', () => {
         const composeUrl = __test__.buildQuoteComposerUrl('https://x.com/alice/status/2040254679301718161?s=20');
         // The full source URL is round-tripped via encodeURIComponent — decoding it
@@ -48,11 +43,14 @@ describe('twitter quote command', () => {
         const script = page.evaluate.mock.calls[0][0];
         // Quote-attachment guard: the script must verify the quoted card rendered
         // before submitting; otherwise we'd silently post a plain tweet without
-        // the quote attachment.
+        // the quote attachment. Detection now uses the shared helper's
+        // __twHasLinkToTarget(document) — JSDOM coverage in shared.test.js
+        // proves it does an exact (not substring) match on the status id.
         expect(script).toContain('Quote target did not render');
         expect(script).toContain('document.execCommand');
         expect(script).toContain('tweetButton');
-        expect(script).toContain('getStatusId(link.href) === tweetId');
+        expect(script).toContain('__twHasLinkToTarget(document)');
+        expect(script).toContain('__twGetStatusIdFromHref');
         expect(script).toContain('Quote tweet submission did not complete before timeout');
         expect(script).toContain('[role="alert"], [data-testid="toast"]');
         expect(result).toEqual([

@@ -1,10 +1,6 @@
 import { CommandExecutionError } from '@jackwener/opencli/errors';
 import { cli, Strategy } from '@jackwener/opencli/registry';
-import { parseTweetUrl } from './shared.js';
-
-function extractTweetId(url) {
-    return parseTweetUrl(url).id;
-}
+import { parseTweetUrl, buildTwitterArticleScopeSource } from './shared.js';
 
 function buildQuoteComposerUrl(url) {
     // Twitter/X quote-tweet compose URL: the `url` param attaches the source
@@ -17,15 +13,8 @@ function buildQuoteComposerUrl(url) {
 async function submitQuote(page, text, tweetId) {
     return page.evaluate(`(async () => {
         try {
+            ${buildTwitterArticleScopeSource(tweetId)}
             const visible = (el) => !!el && (el.offsetParent !== null || el.getClientRects().length > 0);
-            const getStatusId = (href) => {
-                try {
-                    const match = new URL(href, window.location.origin).pathname.match(/^\\/(?:[^/]+|i)\\/status\\/(\\d+)\\/?$/);
-                    return match?.[1] || null;
-                } catch {
-                    return null;
-                }
-            };
             const boxes = Array.from(document.querySelectorAll('[data-testid="tweetTextarea_0"]'));
             const box = boxes.find(visible) || boxes[0];
             if (!box) {
@@ -34,7 +23,6 @@ async function submitQuote(page, text, tweetId) {
 
             box.focus();
             const textToInsert = ${JSON.stringify(text)};
-            const tweetId = ${JSON.stringify(tweetId)};
             // execCommand('insertText') is more reliable with Twitter's Draft.js editor.
             if (!document.execCommand('insertText', false, textToInsert)) {
                 // Fallback to paste event if execCommand fails.
@@ -49,13 +37,16 @@ async function submitQuote(page, text, tweetId) {
 
             await new Promise(r => setTimeout(r, 1000));
 
-            // Confirm the quoted card is rendered before submitting; otherwise we may
-            // accidentally post a plain tweet without the quote attachment.
+            // Confirm the quoted card is rendered before submitting; otherwise
+            // we may accidentally post a plain tweet without the quote
+            // attachment. The compose page does not wrap the card in an
+            // <article>, so we probe the document for any link whose path
+            // exactly matches the requested status id (uses __twHasLinkToTarget
+            // from buildTwitterArticleScopeSource).
             let cardAttempts = 0;
             let hasQuoteCard = false;
             while (cardAttempts < 20) {
-                hasQuoteCard = Array.from(document.querySelectorAll('a[href*="/status/"]'))
-                    .some((link) => getStatusId(link.href) === tweetId);
+                hasQuoteCard = __twHasLinkToTarget(document);
                 if (hasQuoteCard) break;
                 await new Promise(r => setTimeout(r, 250));
                 cardAttempts++;
@@ -135,5 +126,4 @@ cli({
 
 export const __test__ = {
     buildQuoteComposerUrl,
-    extractTweetId,
 };
