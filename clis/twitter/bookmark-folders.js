@@ -1,6 +1,7 @@
 import { cli, Strategy } from '@jackwener/opencli/registry';
 import { AuthRequiredError, CommandExecutionError } from '@jackwener/opencli/errors';
 import { TWITTER_BEARER_TOKEN } from './utils.js';
+import { resolveTwitterQueryId } from './shared.js';
 
 // X surfaces user-created bookmark folders through a GraphQL slice query.
 // We mirror the patterns used in bookmarks.js / lists.js: a literal
@@ -89,30 +90,7 @@ cli({
 
         // Try the fa0311/twitter-openapi placeholder first; fall back to scraping
         // client-web bundles for the queryId; final fallback is the pinned constant.
-        const queryId = await page.evaluate(`async () => {
-            try {
-                const ghResp = await fetch('https://raw.githubusercontent.com/fa0311/twitter-openapi/refs/heads/main/src/config/placeholder.json');
-                if (ghResp.ok) {
-                    const data = await ghResp.json();
-                    const entry = data['${OPERATION_NAME}'];
-                    if (entry && entry.queryId) return entry.queryId;
-                }
-            } catch {}
-            try {
-                const scripts = performance.getEntriesByType('resource')
-                    .filter(r => r.name.includes('client-web') && r.name.endsWith('.js'))
-                    .map(r => r.name);
-                for (const scriptUrl of scripts.slice(0, 15)) {
-                    try {
-                        const text = await (await fetch(scriptUrl)).text();
-                        const re = /queryId:"([A-Za-z0-9_-]+)"[^}]{0,200}operationName:"${OPERATION_NAME}"/;
-                        const m = text.match(re);
-                        if (m) return m[1];
-                    } catch {}
-                }
-            } catch {}
-            return null;
-        }`) || FALLBACK_QUERY_ID;
+        const queryId = await resolveTwitterQueryId(page, OPERATION_NAME, FALLBACK_QUERY_ID);
 
         const headers = JSON.stringify({
             'Authorization': `Bearer ${decodeURIComponent(TWITTER_BEARER_TOKEN)}`,

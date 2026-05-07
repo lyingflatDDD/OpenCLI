@@ -56,9 +56,17 @@ export function buildTwitterArticleScopeSource(tweetId) {
     return `
         const tweetId = ${JSON.stringify(tweetId)};
         const __twTweetPathRe = /^\\/(?:[^/]+|i)\\/status\\/(\\d+)\\/?$/;
+        const __twIsTwitterHost = (hostname) => hostname === 'x.com'
+            || hostname === 'twitter.com'
+            || hostname.endsWith('.x.com')
+            || hostname.endsWith('.twitter.com');
         const __twGetStatusIdFromHref = (href) => {
             try {
-                return (new URL(href, window.location.origin).pathname.match(__twTweetPathRe))?.[1] || null;
+                const parsed = new URL(href, window.location.origin);
+                if (parsed.protocol !== 'https:' || !__twIsTwitterHost(parsed.hostname.toLowerCase())) {
+                    return null;
+                }
+                return parsed.pathname.match(__twTweetPathRe)?.[1] || null;
             } catch {
                 return null;
             }

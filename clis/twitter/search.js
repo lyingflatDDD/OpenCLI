@@ -35,6 +35,8 @@ const PRODUCT_TO_F_PARAM = Object.freeze({
     videos: 'video',
 });
 
+const FROM_USER_PATTERN = /^[A-Za-z0-9_]{1,15}$/;
+
 const EXCLUDE_TO_OPERATOR = Object.freeze({
     replies: '-filter:replies',
     // `retweets` is a CLI-friendly alias for X's actual `-filter:nativeretweets`.
@@ -63,6 +65,12 @@ function buildSearchQuery(rawQuery, kwargs) {
     const parts = [String(rawQuery ?? '').trim()];
     if (kwargs.from) {
         const fromUser = String(kwargs.from).trim().replace(/^@+/, '');
+        if (fromUser && !FROM_USER_PATTERN.test(fromUser)) {
+            throw new ArgumentError(
+                `Invalid --from username: ${JSON.stringify(kwargs.from)}`,
+                'Use a Twitter/X handle with 1-15 letters, numbers, or underscores; omit @ or pass @handle.',
+            );
+        }
         if (fromUser) parts.push(`from:${fromUser}`);
     }
     if (kwargs.has) {
@@ -172,7 +180,10 @@ async function navigateToSearch(page, query, fParam) {
             // matching tab to align with the requested product. Only `live`
             // currently surfaces a distinct tab label — `image`/`video` tabs
             // also need an explicit click, so try them all.
-            await clickProductTabIfNeeded(page, fParam);
+            const tabClicked = await clickProductTabIfNeeded(page, fParam);
+            if (!tabClicked) {
+                throw new CommandExecutionError(`SPA fallback reached /search but could not select the requested product tab: ${fParam}`);
+            }
             return;
         }
     }
@@ -185,14 +196,14 @@ async function navigateToSearch(page, query, fParam) {
  * SearchTimeline call uses the right filter. No-op for fParam=top (default).
  */
 async function clickProductTabIfNeeded(page, fParam) {
-    if (fParam === 'top') return;
+    if (fParam === 'top') return true;
     const tabLabels = JSON.stringify({
         live: ['Latest', '最新'],
         image: ['Photos', 'Images', '照片', '图片'],
         video: ['Videos', '视频'],
     }[fParam] || []);
-    if (tabLabels === '[]') return;
-    await page.evaluate(`(() => {
+    if (tabLabels === '[]') return true;
+    const clicked = await page.evaluate(`(() => {
       const labels = ${tabLabels};
       const tabs = document.querySelectorAll('[role="tab"]');
       for (const tab of tabs) {
@@ -204,7 +215,9 @@ async function clickProductTabIfNeeded(page, fParam) {
       }
       return false;
     })()`);
+    if (!clicked) return false;
     await page.wait(2);
+    return true;
 }
 
 cli({
@@ -223,13 +236,16 @@ cli({
         { name: 'has', type: 'string', choices: HAS_CHOICES, help: 'Restrict to tweets that have media|images|videos|links|replies. Maps to X\'s `filter:<has>` operator.' },
         { name: 'exclude', type: 'string', choices: EXCLUDE_CHOICES, help: 'Exclude tweets matching <type>: replies|retweets|media|links. Maps to X\'s `-filter:<x>` operator (retweets → -filter:nativeretweets).' },
         { name: 'limit', type: 'int', default: 15, help: 'Maximum number of tweets to return (default 15). Result count after server-side filtering.' },
-        { name: 'top-by-engagement', type: 'int', default: 0, help: 'When set to N>0, re-rank the results by weighted engagement (likes×1 + retweets×3 + replies×2 + bookmarks×5 + log10(views)×0.5) and return the top N. Default 0 keeps X\'s native ordering.' },
+        { name: 'top-by-engagement', type: 'int', default: 0, help: 'When set to N>0, re-rank the results by weighted engagement (likes×1 + retweets×3 + replies×2 + bookmarks×5 + log10(views+1)×0.5) and return the top N. Default 0 keeps X\'s native ordering.' },
     ],
     columns: ['id', 'author', 'text', 'created_at', 'likes', 'views', 'url', 'has_media', 'media_urls'],
     func: async (page, kwargs) => {
         const finalQuery = buildSearchQuery(kwargs.query, kwargs);
         if (!finalQuery) {
             throw new ArgumentError('twitter search query is empty', 'Provide a non-empty <query>, or use at least one of --from / --has / --exclude.');
+        }
+        if (!Number.isInteger(Number(kwargs.limit)) || Number(kwargs.limit) <= 0) {
+            throw new ArgumentError('twitter search --limit must be a positive integer', 'Example: opencli twitter search opencli --limit 15');
         }
         const fParam = resolveSearchFParam(kwargs);
         // 1. Navigate to x.com/explore (has a search input at the top)
@@ -304,4 +320,5 @@ export const __test__ = {
     PRODUCT_CHOICES,
     EXCLUDE_TO_OPERATOR,
     PRODUCT_TO_F_PARAM,
+    FROM_USER_PATTERN,
 };

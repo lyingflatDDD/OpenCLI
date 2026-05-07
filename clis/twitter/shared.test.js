@@ -76,6 +76,27 @@ describe('twitter buildTwitterArticleScopeSource', () => {
         expect(helpers.findTargetArticle()).toBeUndefined();
     });
 
+    it('rejects off-domain links even when the path has the requested status id', () => {
+        const dom = makeDom('<article><a href="https://evil.com/alice/status/2040254679301718161">link</a></article>');
+        const helpers = loadHelpers('2040254679301718161', dom);
+        expect(helpers.findTargetArticle()).toBeUndefined();
+    });
+
+    it('rejects host-suffix and non-https status links', () => {
+        const dom = makeDom(`
+            <article id="suffix"><a href="https://x.com.evil.com/alice/status/2040254679301718161">link</a></article>
+            <article id="http"><a href="http://x.com/alice/status/2040254679301718161">link</a></article>
+        `);
+        const helpers = loadHelpers('2040254679301718161', dom);
+        expect(helpers.findTargetArticle()).toBeUndefined();
+    });
+
+    it('accepts exact Twitter/X status links with query and hash suffixes', () => {
+        const dom = makeDom('<article id="ok"><a href="https://mobile.twitter.com/alice/status/2040254679301718161?s=20#fragment">link</a></article>');
+        const helpers = loadHelpers('2040254679301718161', dom);
+        expect(helpers.findTargetArticle()?.id).toBe('ok');
+    });
+
     it('matches /i/status/<id> URL form', () => {
         const dom = makeDom('<article><a href="https://x.com/i/status/2040318731105313143">link</a></article>');
         const helpers = loadHelpers('2040318731105313143', dom);
@@ -99,6 +120,9 @@ describe('twitter buildTwitterArticleScopeSource', () => {
         const helpers = loadHelpers('123', dom);
         expect(helpers.__twGetStatusIdFromHref('https://x.com/alice/home')).toBeNull();
         expect(helpers.__twGetStatusIdFromHref('https://x.com/alice/status/123/photo/1')).toBeNull();
+        expect(helpers.__twGetStatusIdFromHref('https://evil.com/alice/status/123')).toBeNull();
+        expect(helpers.__twGetStatusIdFromHref('https://x.com.evil.com/alice/status/123')).toBeNull();
+        expect(helpers.__twGetStatusIdFromHref('http://x.com/alice/status/123')).toBeNull();
         expect(helpers.__twGetStatusIdFromHref('not a url')).toBeNull();
     });
 

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { getRegistry } from '@jackwener/opencli/registry';
 import { __test__ } from './bookmark-folder.js';
 
-const { parseBookmarkFolderTimeline, buildFolderTimelineUrl } = __test__;
+const { parseBookmarkFolderTimeline, buildFolderTimelineUrl, FOLDER_ID_PATTERN } = __test__;
 
 describe('twitter bookmark-folder URL builder', () => {
     it('embeds the folder id and count in the variables payload', () => {
@@ -27,6 +27,13 @@ describe('twitter bookmark-folder URL builder', () => {
         const m = url.match(/variables=([^&]+)/);
         const vars = JSON.parse(decodeURIComponent(m[1]));
         expect(vars.bookmark_collection_id).toBe('555');
+    });
+
+    it('preserves opaque folder ids without truncating them', () => {
+        const url = buildFolderTimelineUrl('queryX', 'folder_AbC-123', 10);
+        const m = url.match(/variables=([^&]+)/);
+        const vars = JSON.parse(decodeURIComponent(m[1]));
+        expect(vars.bookmark_collection_id).toBe('folder_AbC-123');
     });
 });
 
@@ -207,13 +214,56 @@ describe('twitter bookmark-folder timeline parser', () => {
         expect(tweets[0].text).toBe('first');
     });
 
+    it('does not synthesize an unknown author sentinel when screen_name is missing', () => {
+        const data = {
+            data: {
+                bookmark_timeline_v2: {
+                    timeline: {
+                        instructions: [{
+                            entries: [{
+                                entryId: 'tweet-5',
+                                content: {
+                                    itemContent: {
+                                        tweet_results: {
+                                            result: {
+                                                rest_id: '5',
+                                                legacy: { full_text: 'missing author', favorite_count: 0, retweet_count: 0, bookmark_count: 0 },
+                                                core: { user_results: { result: {} } },
+                                            },
+                                        },
+                                    },
+                                },
+                            }],
+                        }],
+                    },
+                },
+            },
+        };
+        const { tweets } = parseBookmarkFolderTimeline(data, new Set());
+        expect(tweets[0].author).toBe('');
+        expect(tweets[0].url).toBe('https://x.com/i/status/5');
+    });
+
     it('returns empty array + null cursor for unknown envelope', () => {
         expect(parseBookmarkFolderTimeline({}, new Set())).toEqual({ tweets: [], nextCursor: null });
     });
 });
 
+describe('twitter bookmark-folder id validation', () => {
+    it('accepts numeric and opaque safe ids from bookmark-folders output', () => {
+        expect(FOLDER_ID_PATTERN.test('1234567890')).toBe(true);
+        expect(FOLDER_ID_PATTERN.test('folder_AbC-123')).toBe(true);
+    });
+
+    it('rejects ids that could pollute GraphQL variables or URL construction', () => {
+        for (const value of ['folder/123', 'folder?x=1', 'folder%2F123', 'folder.123', 'folder 123', '']) {
+            expect(FOLDER_ID_PATTERN.test(value)).toBe(false);
+        }
+    });
+});
+
 describe('twitter bookmark-folder command (registry)', () => {
-    it('throws ArgumentError on non-numeric folder-id', async () => {
+    it('throws ArgumentError on unsafe folder-id before navigation', async () => {
         const command = getRegistry().get('twitter/bookmark-folder');
         expect(command?.func).toBeTypeOf('function');
         const page = {
@@ -221,7 +271,7 @@ describe('twitter bookmark-folder command (registry)', () => {
             wait: vi.fn(),
             evaluate: vi.fn(),
         };
-        await expect(command.func(page, { 'folder-id': 'not-a-number', limit: 5 }))
+        await expect(command.func(page, { 'folder-id': 'folder/123', limit: 5 }))
             .rejects
             .toThrow(/Invalid folder-id/);
         expect(page.goto).not.toHaveBeenCalled();
@@ -239,6 +289,21 @@ describe('twitter bookmark-folder command (registry)', () => {
             .toThrow(/Invalid folder-id/);
     });
 
+    it('throws ArgumentError on invalid limit before navigation', async () => {
+        const command = getRegistry().get('twitter/bookmark-folder');
+        for (const limit of [0, -1, 1.5, Number.NaN]) {
+            const page = {
+                goto: vi.fn(),
+                wait: vi.fn(),
+                evaluate: vi.fn(),
+            };
+            await expect(command.func(page, { 'folder-id': '12345', limit }))
+                .rejects
+                .toThrow(/Invalid --limit/);
+            expect(page.goto).not.toHaveBeenCalled();
+        }
+    });
+
     it('throws AuthRequiredError when ct0 cookie is missing', async () => {
         const command = getRegistry().get('twitter/bookmark-folder');
         const page = {
@@ -249,5 +314,21 @@ describe('twitter bookmark-folder command (registry)', () => {
         await expect(command.func(page, { 'folder-id': '12345', limit: 5 }))
             .rejects
             .toThrow(/Not logged into x.com/);
+    });
+
+    it('accepts an opaque safe folder-id and sends it in the GraphQL variables', async () => {
+        const command = getRegistry().get('twitter/bookmark-folder');
+        const page = {
+            goto: vi.fn().mockResolvedValue(undefined),
+            wait: vi.fn().mockResolvedValue(undefined),
+            evaluate: vi.fn()
+                .mockResolvedValueOnce('ct0-token')
+                .mockResolvedValueOnce('queryX')
+                .mockResolvedValueOnce({ data: { bookmark_timeline_v2: { timeline: { instructions: [] } } } }),
+        };
+        const result = await command.func(page, { 'folder-id': 'folder_AbC-123', limit: 5 });
+        expect(result).toEqual([]);
+        const fetchScript = page.evaluate.mock.calls[2][0];
+        expect(decodeURIComponent(fetchScript)).toContain('"bookmark_collection_id":"folder_AbC-123"');
     });
 });

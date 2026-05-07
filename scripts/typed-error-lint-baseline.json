@@ -619,7 +619,7 @@
     "rule": "silent-clamp",
     "command": "twitter/bookmark-folder",
     "file": "clis/twitter/bookmark-folder.js",
-    "line": 182,
+    "line": 161,
     "text": "const fetchCount = Math.min(100, limit - allTweets.length + 10);",
     "occurrence": 0
   },
@@ -635,7 +635,7 @@
     "rule": "silent-clamp",
     "command": "twitter/following",
     "file": "clis/twitter/following.js",
-    "line": 209,
+    "line": 215,
     "text": "const fetchCount = Math.min(50, limit - allUsers.length + 10);",
     "occurrence": 0
   },
@@ -1217,14 +1217,6 @@
   },
   {
     "rule": "silent-sentinel",
-    "command": "twitter/bookmark-folder",
-    "file": "clis/twitter/bookmark-folder.js",
-    "line": 61,
-    "text": "const screenName = user?.legacy?.screen_name || user?.core?.screen_name || 'unknown';",
-    "occurrence": 0
-  },
-  {
-    "rule": "silent-sentinel",
     "command": "twitter/bookmarks",
     "file": "clis/twitter/bookmarks.js",
     "line": 53,
@@ -1299,7 +1291,7 @@
     "rule": "silent-sentinel",
     "command": "twitter/search",
     "file": "clis/twitter/search.js",
-    "line": 280,
+    "line": 296,
     "text": "author: tweetUser?.core?.screen_name || tweetUser?.legacy?.screen_name || 'unknown',",
     "occurrence": 0
   },

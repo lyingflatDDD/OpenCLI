@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { getRegistry } from '@jackwener/opencli/registry';
 import { __test__ } from './search.js';
 
-const { buildSearchQuery, resolveSearchFParam, HAS_CHOICES, EXCLUDE_CHOICES, PRODUCT_CHOICES, EXCLUDE_TO_OPERATOR, PRODUCT_TO_F_PARAM } = __test__;
+const { buildSearchQuery, resolveSearchFParam, HAS_CHOICES, EXCLUDE_CHOICES, PRODUCT_CHOICES, EXCLUDE_TO_OPERATOR, PRODUCT_TO_F_PARAM, FROM_USER_PATTERN } = __test__;
 describe('twitter search command', () => {
     it('retries transient SPA navigation failures before giving up', async () => {
         const command = getRegistry().get('twitter/search');
@@ -215,6 +215,56 @@ describe('twitter search command', () => {
         expect(evaluate).toHaveBeenCalledTimes(6);
         expect(page.autoScroll).toHaveBeenCalled();
     });
+    it('clicks the requested product tab after fallback navigation when f= param is absent', async () => {
+        const command = getRegistry().get('twitter/search');
+        expect(command?.func).toBeTypeOf('function');
+        const evaluate = vi.fn()
+            .mockResolvedValueOnce(undefined) // pushState attempt 1
+            .mockResolvedValueOnce('/explore')
+            .mockResolvedValueOnce(undefined) // pushState attempt 2
+            .mockResolvedValueOnce('/explore')
+            .mockResolvedValueOnce({ ok: true }) // search input fallback
+            .mockResolvedValueOnce('/search')
+            .mockResolvedValueOnce(true); // product tab click
+        const page = {
+            goto: vi.fn().mockResolvedValue(undefined),
+            wait: vi.fn().mockResolvedValue(undefined),
+            installInterceptor: vi.fn().mockResolvedValue(undefined),
+            evaluate,
+            autoScroll: vi.fn().mockResolvedValue(undefined),
+            getInterceptedRequests: vi.fn().mockResolvedValue([]),
+        };
+        const result = await command.func(page, { query: 'cats', product: 'photos', limit: 5 });
+        expect(result).toEqual([]);
+        expect(evaluate).toHaveBeenCalledTimes(7);
+        expect(evaluate.mock.calls[6][0]).toContain('Photos');
+        expect(page.autoScroll).toHaveBeenCalled();
+    });
+    it('throws when fallback navigation cannot select the requested product tab', async () => {
+        const command = getRegistry().get('twitter/search');
+        expect(command?.func).toBeTypeOf('function');
+        const evaluate = vi.fn()
+            .mockResolvedValueOnce(undefined) // pushState attempt 1
+            .mockResolvedValueOnce('/explore')
+            .mockResolvedValueOnce(undefined) // pushState attempt 2
+            .mockResolvedValueOnce('/explore')
+            .mockResolvedValueOnce({ ok: true }) // search input fallback
+            .mockResolvedValueOnce('/search')
+            .mockResolvedValueOnce(false); // requested tab missing
+        const page = {
+            goto: vi.fn().mockResolvedValue(undefined),
+            wait: vi.fn().mockResolvedValue(undefined),
+            installInterceptor: vi.fn().mockResolvedValue(undefined),
+            evaluate,
+            autoScroll: vi.fn().mockResolvedValue(undefined),
+            getInterceptedRequests: vi.fn(),
+        };
+        await expect(command.func(page, { query: 'cats', product: 'videos', limit: 5 }))
+            .rejects
+            .toThrow(/could not select the requested product tab: video/);
+        expect(page.autoScroll).not.toHaveBeenCalled();
+        expect(page.getInterceptedRequests).not.toHaveBeenCalled();
+    });
     it('throws with the final path after both attempts fail', async () => {
         const command = getRegistry().get('twitter/search');
         expect(command?.func).toBeTypeOf('function');
@@ -257,6 +307,11 @@ describe('twitter search filter helpers', () => {
         });
         it('drops --from when it is whitespace-only', () => {
             expect(buildSearchQuery('hi', { from: '   ' })).toBe('hi');
+        });
+        it('rejects invalid --from usernames instead of injecting raw operators', () => {
+            expect(() => buildSearchQuery('hi', { from: 'alice filter:links' })).toThrow(/Invalid --from/);
+            expect(() => buildSearchQuery('hi', { from: 'alice/bob' })).toThrow(/Invalid --from/);
+            expect(() => buildSearchQuery('hi', { from: '@' + 'a'.repeat(16) })).toThrow(/Invalid --from/);
         });
         it('appends filter:<has> for --has', () => {
             expect(buildSearchQuery('q', { has: 'images' })).toBe('q filter:images');
@@ -346,6 +401,12 @@ describe('twitter search filter helpers', () => {
                 expect(EXCLUDE_TO_OPERATOR[choice]).toMatch(/^-filter:/);
             }
         });
+        it('keeps FROM_USER_PATTERN aligned with X handle syntax', () => {
+            expect(FROM_USER_PATTERN.test('alice_123')).toBe(true);
+            expect(FROM_USER_PATTERN.test('a'.repeat(15))).toBe(true);
+            expect(FROM_USER_PATTERN.test('a'.repeat(16))).toBe(false);
+            expect(FROM_USER_PATTERN.test('alice/bob')).toBe(false);
+        });
     });
 });
 
@@ -392,6 +453,36 @@ describe('twitter search end-to-end with new filters', () => {
             .rejects
             .toThrow(/empty/i);
         expect(page.installInterceptor).not.toHaveBeenCalled();
+    });
+    it('throws ArgumentError for invalid --from before navigation', async () => {
+        const command = getRegistry().get('twitter/search');
+        const page = {
+            goto: vi.fn(),
+            wait: vi.fn(),
+            installInterceptor: vi.fn(),
+            evaluate: vi.fn(),
+            autoScroll: vi.fn(),
+            getInterceptedRequests: vi.fn(),
+        };
+        await expect(command.func(page, { query: 'hi', from: 'alice filter:links', limit: 5 }))
+            .rejects
+            .toThrow(/Invalid --from/);
+        expect(page.goto).not.toHaveBeenCalled();
+    });
+    it('throws ArgumentError for invalid --limit before navigation', async () => {
+        const command = getRegistry().get('twitter/search');
+        const page = {
+            goto: vi.fn(),
+            wait: vi.fn(),
+            installInterceptor: vi.fn(),
+            evaluate: vi.fn(),
+            autoScroll: vi.fn(),
+            getInterceptedRequests: vi.fn(),
+        };
+        await expect(command.func(page, { query: 'hi', limit: 0 }))
+            .rejects
+            .toThrow(/--limit/);
+        expect(page.goto).not.toHaveBeenCalled();
     });
     it('runs with only filters set (empty <query>)', async () => {
         const command = getRegistry().get('twitter/search');

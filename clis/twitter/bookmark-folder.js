@@ -1,6 +1,7 @@
 import { cli, Strategy } from '@jackwener/opencli/registry';
 import { ArgumentError, AuthRequiredError, CommandExecutionError } from '@jackwener/opencli/errors';
 import { TWITTER_BEARER_TOKEN, applyTopByEngagement } from './utils.js';
+import { resolveTwitterQueryId } from './shared.js';
 
 // Companion to bookmark-folders.js: reads tweets inside a single folder.
 // X exposes folder contents through a separate timeline operation
@@ -9,6 +10,7 @@ import { TWITTER_BEARER_TOKEN, applyTopByEngagement } from './utils.js';
 // just scoped to one folder via the bookmark_collection_id variable.
 const OPERATION_NAME = 'BookmarkFolderTimeline';
 const FALLBACK_QUERY_ID = '13H7EUATwethsj_jZ6QQAQ';
+const FOLDER_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
 
 const FEATURES = {
     rweb_video_screen_enabled: false,
@@ -58,7 +60,7 @@ function extractFolderTweet(result, seen) {
     if (!tw.rest_id || seen.has(tw.rest_id)) return null;
     seen.add(tw.rest_id);
     const user = tw.core?.user_results?.result;
-    const screenName = user?.legacy?.screen_name || user?.core?.screen_name || 'unknown';
+    const screenName = user?.legacy?.screen_name || user?.core?.screen_name || '';
     const noteText = tw.note_tweet?.note_tweet_results?.result?.text;
     return {
         id: tw.rest_id,
@@ -68,7 +70,7 @@ function extractFolderTweet(result, seen) {
         retweets: legacy.retweet_count || 0,
         bookmarks: legacy.bookmark_count || 0,
         created_at: legacy.created_at || '',
-        url: `https://x.com/${screenName}/status/${tw.rest_id}`,
+        url: screenName ? `https://x.com/${screenName}/status/${tw.rest_id}` : `https://x.com/i/status/${tw.rest_id}`,
     };
 }
 
@@ -121,19 +123,22 @@ cli({
     strategy: Strategy.COOKIE,
     browser: true,
     args: [
-        { name: 'folder-id', positional: true, type: 'string', required: true, help: 'Numeric folder id from `opencli twitter bookmark-folders`.' },
+        { name: 'folder-id', positional: true, type: 'string', required: true, help: 'Folder id from `opencli twitter bookmark-folders`.' },
         { name: 'limit', type: 'int', default: 20, help: 'Maximum number of bookmarks to return (default 20).' },
-        { name: 'top-by-engagement', type: 'int', default: 0, help: 'When set to N>0, re-rank the folder by weighted engagement (likes×1 + retweets×3 + replies×2 + bookmarks×5 + log10(views)×0.5) and return the top N. Default 0 keeps the API\'s native (saved-time) ordering.' },
+        { name: 'top-by-engagement', type: 'int', default: 0, help: 'When set to N>0, re-rank the folder by weighted engagement (likes×1 + retweets×3 + replies×2 + bookmarks×5 + log10(views+1)×0.5) and return the top N. Default 0 keeps the API\'s native (saved-time) ordering.' },
     ],
     columns: ['id', 'author', 'text', 'likes', 'retweets', 'bookmarks', 'created_at', 'url'],
     func: async (page, kwargs) => {
         const folderId = String(kwargs['folder-id'] || '').trim();
-        if (!folderId || !/^\d+$/.test(folderId)) {
+        if (!folderId || !FOLDER_ID_PATTERN.test(folderId)) {
             throw new ArgumentError(
-                `Invalid folder-id: ${JSON.stringify(kwargs['folder-id'])}. Expected a numeric ID — run \`opencli twitter bookmark-folders\` to list yours.`,
+                `Invalid folder-id: ${JSON.stringify(kwargs['folder-id'])}. Expected a safe folder ID from \`opencli twitter bookmark-folders\`.`,
             );
         }
-        const limit = kwargs.limit || 20;
+        const limit = Number(kwargs.limit ?? 20);
+        if (!Number.isInteger(limit) || limit < 1) {
+            throw new ArgumentError(`Invalid --limit: ${JSON.stringify(kwargs.limit)}. Expected a positive integer.`);
+        }
 
         await page.goto('https://x.com');
         await page.wait(3);
@@ -143,30 +148,7 @@ cli({
         if (!ct0)
             throw new AuthRequiredError('x.com', 'Not logged into x.com (no ct0 cookie)');
 
-        const queryId = await page.evaluate(`async () => {
-            try {
-                const ghResp = await fetch('https://raw.githubusercontent.com/fa0311/twitter-openapi/refs/heads/main/src/config/placeholder.json');
-                if (ghResp.ok) {
-                    const data = await ghResp.json();
-                    const entry = data['${OPERATION_NAME}'];
-                    if (entry && entry.queryId) return entry.queryId;
-                }
-            } catch {}
-            try {
-                const scripts = performance.getEntriesByType('resource')
-                    .filter(r => r.name.includes('client-web') && r.name.endsWith('.js'))
-                    .map(r => r.name);
-                for (const scriptUrl of scripts.slice(0, 15)) {
-                    try {
-                        const text = await (await fetch(scriptUrl)).text();
-                        const re = /queryId:"([A-Za-z0-9_-]+)"[^}]{0,200}operationName:"${OPERATION_NAME}"/;
-                        const m = text.match(re);
-                        if (m) return m[1];
-                    } catch {}
-                }
-            } catch {}
-            return null;
-        }`) || FALLBACK_QUERY_ID;
+        const queryId = await resolveTwitterQueryId(page, OPERATION_NAME, FALLBACK_QUERY_ID);
 
         const headers = JSON.stringify({
             'Authorization': `Bearer ${decodeURIComponent(TWITTER_BEARER_TOKEN)}`,
@@ -203,4 +185,5 @@ cli({
 export const __test__ = {
     parseBookmarkFolderTimeline,
     buildFolderTimelineUrl,
+    FOLDER_ID_PATTERN,
 };

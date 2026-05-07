@@ -223,7 +223,7 @@ const ENGAGEMENT_WEIGHTS = Object.freeze({
 /**
  * Compute the weighted engagement score for a tweet-shaped row.
  *
- * Formula: likes×1 + retweets×3 + replies×2 + bookmarks×5 + log10(views)×0.5
+ * Formula: likes×1 + retweets×3 + replies×2 + bookmarks×5 + log10(views+1)×0.5
  *
  * - String fields (e.g. views: '12345') are coerced via Number(); non-numeric
  *   strings become 0 instead of NaN-poisoning the score.
