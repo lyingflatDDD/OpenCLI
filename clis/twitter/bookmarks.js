@@ -101,12 +101,12 @@ cli({
     site: 'twitter',
     name: 'bookmarks',
     access: 'read',
-    description: 'Fetch Twitter/X bookmarks',
+    description: 'Fetch your Twitter/X bookmarks (the logged-in user\'s saved tweets, newest first)',
     domain: 'x.com',
     strategy: Strategy.COOKIE,
     browser: true,
     args: [
-        { name: 'limit', type: 'int', default: 20 },
+        { name: 'limit', type: 'int', default: 20, help: 'Maximum number of bookmarks to return (default 20).' },
     ],
     columns: ['id', 'author', 'text', 'likes', 'retweets', 'bookmarks', 'created_at', 'url'],
     func: async (page, kwargs) => {

@@ -135,7 +135,7 @@ cli({
     site: 'twitter',
     name: 'following',
     access: 'read',
-    description: 'Get accounts a Twitter/X user is following',
+    description: 'Get accounts a Twitter/X user is following (defaults to the logged-in user when no user is given)',
     domain: 'x.com',
     strategy: Strategy.COOKIE,
     browser: true,
@@ -147,7 +147,7 @@ cli({
             required: false,
             help: 'Twitter/X handle (with or without @). Omit to fetch the accounts the currently logged-in user follows.',
         },
-        { name: 'limit', type: 'int', default: 50 },
+        { name: 'limit', type: 'int', default: 50, help: 'Maximum number of following rows to return (default 50). Must be a positive integer.' },
     ],
     columns: ['screen_name', 'name', 'bio', 'followers'],
     func: async (page, kwargs) => {

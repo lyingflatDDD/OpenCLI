@@ -7,12 +7,12 @@ cli({
     site: 'twitter',
     name: 'profile',
     access: 'read',
-    description: 'Fetch a Twitter user profile (bio, stats, etc.)',
+    description: 'Fetch a Twitter user profile — bio, stats, etc. (defaults to the logged-in user when no username is given)',
     domain: 'x.com',
     strategy: Strategy.COOKIE,
     browser: true,
     args: [
-        { name: 'username', type: 'string', positional: true, help: 'Twitter screen name (without @). Defaults to logged-in user.' },
+        { name: 'username', type: 'string', positional: true, help: 'Twitter screen name (with or without @). Defaults to the logged-in user when omitted.' },
     ],
     columns: ['screen_name', 'name', 'bio', 'location', 'url', 'followers', 'following', 'tweets', 'likes', 'verified', 'created_at'],
     func: async (page, kwargs) => {

@@ -138,13 +138,13 @@ cli({
     site: 'twitter',
     name: 'likes',
     access: 'read',
-    description: 'Fetch liked tweets of a Twitter user',
+    description: 'Fetch liked tweets of a Twitter user (defaults to the logged-in user when no username is given)',
     domain: 'x.com',
     strategy: Strategy.COOKIE,
     browser: true,
     args: [
-        { name: 'username', type: 'string', positional: true, help: 'Twitter screen name (without @). Defaults to logged-in user.' },
-        { name: 'limit', type: 'int', default: 20 },
+        { name: 'username', type: 'string', positional: true, help: 'Twitter screen name (with or without @). Defaults to the logged-in user when omitted.' },
+        { name: 'limit', type: 'int', default: 20, help: 'Maximum number of liked tweets to return (default 20).' },
     ],
     columns: ['id', 'author', 'name', 'text', 'likes', 'retweets', 'created_at', 'url', 'has_media', 'media_urls'],
     func: async (page, kwargs) => {

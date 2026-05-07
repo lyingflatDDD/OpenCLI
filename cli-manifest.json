@@ -22232,7 +22232,7 @@
   {
     "site": "twitter",
     "name": "bookmarks",
-    "description": "Fetch Twitter/X bookmarks",
+    "description": "Fetch your Twitter/X bookmarks (the logged-in user's saved tweets, newest first)",
     "access": "read",
     "domain": "x.com",
     "strategy": "cookie",
@@ -22243,7 +22243,7 @@
         "type": "int",
         "default": 20,
         "required": false,
-        "help": ""
+        "help": "Maximum number of bookmarks to return (default 20)."
       }
     ],
     "columns": [
@@ -22290,7 +22290,7 @@
   {
     "site": "twitter",
     "name": "download",
-    "description": "下载 Twitter/X 媒体（图片和视频）",
+    "description": "Download Twitter/X media (images and videos). Provide either <username> to scan a profile's media tab, or --tweet-url to download a single tweet.",
     "access": "read",
     "domain": "x.com",
     "strategy": "cookie",
@@ -22301,27 +22301,27 @@
         "type": "str",
         "required": false,
         "positional": true,
-        "help": "Twitter username (downloads from media tab)"
+        "help": "Twitter username (with or without @) to scan their /media tab. Either <username> or --tweet-url is required."
       },
       {
         "name": "tweet-url",
         "type": "str",
         "required": false,
-        "help": "Single tweet URL to download"
+        "help": "Single tweet URL to download. Use this OR <username>, not both required at once."
       },
       {
         "name": "limit",
         "type": "int",
         "default": 10,
         "required": false,
-        "help": "Number of tweets to scan"
+        "help": "Maximum number of media items to download when scanning a profile (default 10). Ignored when --tweet-url is used."
       },
       {
         "name": "output",
         "type": "str",
         "default": "./twitter-downloads",
         "required": false,
-        "help": "Output directory"
+        "help": "Output directory (default ./twitter-downloads). A per-source subdir is created inside."
       }
     ],
     "columns": [
@@ -22364,7 +22364,7 @@
   {
     "site": "twitter",
     "name": "followers",
-    "description": "Get accounts following a Twitter/X user",
+    "description": "Get accounts following a Twitter/X user (defaults to the logged-in user when no user is given)",
     "access": "read",
     "domain": "x.com",
     "strategy": "ui",
@@ -22382,7 +22382,7 @@
         "type": "int",
         "default": 50,
         "required": false,
-        "help": ""
+        "help": "Maximum number of follower rows to return (default 50). Must be a positive integer."
       }
     ],
     "columns": [
@@ -22398,7 +22398,7 @@
   {
     "site": "twitter",
     "name": "following",
-    "description": "Get accounts a Twitter/X user is following",
+    "description": "Get accounts a Twitter/X user is following (defaults to the logged-in user when no user is given)",
     "access": "read",
     "domain": "x.com",
     "strategy": "cookie",
@@ -22416,7 +22416,7 @@
         "type": "int",
         "default": 50,
         "required": false,
-        "help": ""
+        "help": "Maximum number of following rows to return (default 50). Must be a positive integer."
       }
     ],
     "columns": [
@@ -22485,7 +22485,7 @@
   {
     "site": "twitter",
     "name": "likes",
-    "description": "Fetch liked tweets of a Twitter user",
+    "description": "Fetch liked tweets of a Twitter user (defaults to the logged-in user when no username is given)",
     "access": "read",
     "domain": "x.com",
     "strategy": "cookie",
@@ -22496,14 +22496,14 @@
         "type": "string",
         "required": false,
         "positional": true,
-        "help": "Twitter screen name (without @). Defaults to logged-in user."
+        "help": "Twitter screen name (with or without @). Defaults to the logged-in user when omitted."
       },
       {
         "name": "limit",
         "type": "int",
         "default": 20,
         "required": false,
-        "help": ""
+        "help": "Maximum number of liked tweets to return (default 20)."
       }
     ],
     "columns": [
@@ -22648,7 +22648,7 @@
         "type": "int",
         "default": 50,
         "required": false,
-        "help": ""
+        "help": "Maximum number of lists to return (default 50)."
       }
     ],
     "columns": [
@@ -22666,7 +22666,7 @@
   {
     "site": "twitter",
     "name": "notifications",
-    "description": "Get Twitter/X notifications",
+    "description": "Get your Twitter/X notifications (the logged-in user's likes/replies/follows feed, newest first)",
     "access": "read",
     "domain": "x.com",
     "strategy": "intercept",
@@ -22677,7 +22677,7 @@
         "type": "int",
         "default": 20,
         "required": false,
-        "help": ""
+        "help": "Maximum number of notifications to return (default 20)."
       }
     ],
     "columns": [
@@ -22728,7 +22728,7 @@
   {
     "site": "twitter",
     "name": "profile",
-    "description": "Fetch a Twitter user profile (bio, stats, etc.)",
+    "description": "Fetch a Twitter user profile — bio, stats, etc. (defaults to the logged-in user when no username is given)",
     "access": "read",
     "domain": "x.com",
     "strategy": "cookie",
@@ -22739,7 +22739,7 @@
         "type": "string",
         "required": false,
         "positional": true,
-        "help": "Twitter screen name (without @). Defaults to logged-in user."
+        "help": "Twitter screen name (with or without @). Defaults to the logged-in user when omitted."
       }
     ],
     "columns": [
@@ -22763,7 +22763,7 @@
   {
     "site": "twitter",
     "name": "quote",
-    "description": "Quote-tweet a specific tweet with your own text",
+    "description": "Quote-tweet a specific tweet with your own text, optionally with a local or remote image",
     "access": "write",
     "domain": "x.com",
     "strategy": "ui",
@@ -22782,6 +22782,18 @@
         "required": true,
         "positional": true,
         "help": "The text content of your quote"
+      },
+      {
+        "name": "image",
+        "type": "str",
+        "required": false,
+        "help": "Optional local image path to attach to the quote tweet"
+      },
+      {
+        "name": "image-url",
+        "type": "str",
+        "required": false,
+        "help": "Optional remote image URL to download and attach to the quote tweet"
       }
     ],
     "columns": [
@@ -23008,7 +23020,7 @@
   {
     "site": "twitter",
     "name": "timeline",
-    "description": "Fetch Twitter timeline (for-you or following)",
+    "description": "Fetch the logged-in user's home timeline (for-you algorithmic feed by default; pass --type following for the chronological feed of accounts you follow)",
     "access": "read",
     "domain": "x.com",
     "strategy": "cookie",
@@ -23019,7 +23031,7 @@
         "type": "str",
         "default": "for-you",
         "required": false,
-        "help": "Timeline type: for-you (algorithmic) or following (chronological)",
+        "help": "Which home-timeline feed to read. Default for-you (algorithmic). Use following for the chronological feed of accounts you follow.",
         "choices": [
           "for-you",
           "following"
@@ -23030,7 +23042,7 @@
         "type": "int",
         "default": 20,
         "required": false,
-        "help": ""
+        "help": "Maximum number of tweets to return (default 20)."
       }
     ],
     "columns": [

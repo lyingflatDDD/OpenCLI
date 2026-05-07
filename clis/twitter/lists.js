@@ -93,7 +93,7 @@ export const command = cli({
     strategy: Strategy.COOKIE,
     browser: true,
     args: [
-        { name: 'limit', type: 'int', default: 50 },
+        { name: 'limit', type: 'int', default: 50, help: 'Maximum number of lists to return (default 50).' },
     ],
     columns: ['id', 'name', 'members', 'followers', 'mode'],
     func: async (page, kwargs) => {
