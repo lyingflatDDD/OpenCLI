@@ -22762,6 +22762,40 @@
   },
   {
     "site": "twitter",
+    "name": "quote",
+    "description": "Quote-tweet a specific tweet with your own text",
+    "access": "write",
+    "domain": "x.com",
+    "strategy": "ui",
+    "browser": true,
+    "args": [
+      {
+        "name": "url",
+        "type": "string",
+        "required": true,
+        "positional": true,
+        "help": "The URL of the tweet to quote"
+      },
+      {
+        "name": "text",
+        "type": "string",
+        "required": true,
+        "positional": true,
+        "help": "The text content of your quote"
+      }
+    ],
+    "columns": [
+      "status",
+      "message",
+      "text"
+    ],
+    "type": "js",
+    "modulePath": "twitter/quote.js",
+    "sourceFile": "twitter/quote.js",
+    "navigateBefore": true
+  },
+  {
+    "site": "twitter",
     "name": "reply",
     "description": "Reply to a specific tweet, optionally with a local or remote image",
     "access": "write",
@@ -22853,6 +22887,32 @@
     "type": "js",
     "modulePath": "twitter/reply-dm.js",
     "sourceFile": "twitter/reply-dm.js",
+    "navigateBefore": true
+  },
+  {
+    "site": "twitter",
+    "name": "retweet",
+    "description": "Retweet a specific tweet",
+    "access": "write",
+    "domain": "x.com",
+    "strategy": "ui",
+    "browser": true,
+    "args": [
+      {
+        "name": "url",
+        "type": "string",
+        "required": true,
+        "positional": true,
+        "help": "The URL of the tweet to retweet"
+      }
+    ],
+    "columns": [
+      "status",
+      "message"
+    ],
+    "type": "js",
+    "modulePath": "twitter/retweet.js",
+    "sourceFile": "twitter/retweet.js",
     "navigateBefore": true
   },
   {
@@ -23137,6 +23197,58 @@
     "type": "js",
     "modulePath": "twitter/unfollow.js",
     "sourceFile": "twitter/unfollow.js",
+    "navigateBefore": true
+  },
+  {
+    "site": "twitter",
+    "name": "unlike",
+    "description": "Remove a like from a specific tweet",
+    "access": "write",
+    "domain": "x.com",
+    "strategy": "ui",
+    "browser": true,
+    "args": [
+      {
+        "name": "url",
+        "type": "string",
+        "required": true,
+        "positional": true,
+        "help": "The URL of the tweet to unlike"
+      }
+    ],
+    "columns": [
+      "status",
+      "message"
+    ],
+    "type": "js",
+    "modulePath": "twitter/unlike.js",
+    "sourceFile": "twitter/unlike.js",
+    "navigateBefore": true
+  },
+  {
+    "site": "twitter",
+    "name": "unretweet",
+    "description": "Undo a retweet on a specific tweet",
+    "access": "write",
+    "domain": "x.com",
+    "strategy": "ui",
+    "browser": true,
+    "args": [
+      {
+        "name": "url",
+        "type": "string",
+        "required": true,
+        "positional": true,
+        "help": "The URL of the tweet to unretweet"
+      }
+    ],
+    "columns": [
+      "status",
+      "message"
+    ],
+    "type": "js",
+    "modulePath": "twitter/unretweet.js",
+    "sourceFile": "twitter/unretweet.js",
     "navigateBefore": true
   },
   {
