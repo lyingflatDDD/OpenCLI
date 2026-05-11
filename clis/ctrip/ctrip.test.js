@@ -5,6 +5,7 @@ import './search.js';
 import './hotel-suggest.js';
 import './hotel-search.js';
 import './flight.js';
+import { __test__ as hotelSearchTest } from './hotel-search.js';
 import {
     buildFlightExtractJs,
     buildScrollUntilJs,
@@ -452,6 +453,18 @@ describe('ctrip hotel-search command (registry-level)', () => {
             .rejects.toMatchObject({ code: 'EMPTY_RESULT' });
     });
 
+    it('waits for an empty SSR hotelList so empty results do not become timeout failures', async () => {
+        const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+            url: 'https://hotels.ctrip.com/hotels/list?city=9999',
+            runScripts: 'outside-only',
+        });
+        dom.window.__NEXT_DATA__ = {
+            props: { pageProps: { initListData: { hotelList: [] } } },
+        };
+        await expect(dom.window.Function(`return (${hotelSearchTest.WAIT_FOR_SSR_JS})`)())
+            .resolves.toBe('content');
+    });
+
     it('throws CommandExecutionError when SSR state times out or is malformed', async () => {
         await expect(cmd.func(createPageMock(['timeout']), { city: 2, checkin: '2026-06-15', checkout: '2026-06-17', limit: 5 }))
             .rejects.toMatchObject({ code: 'COMMAND_EXEC', message: expect.stringContaining('did not expose SSR hotel list') });
@@ -543,6 +556,15 @@ describe('ctrip flight command (registry-level)', () => {
         const page = createPageMock(['content', 0, []]);
         await expect(cmd.func(page, { from: 'PEK', to: 'SHA', date: '2026-06-15', limit: 5 }))
             .rejects.toMatchObject({ code: 'EMPTY_RESULT' });
+    });
+
+    it('throws CommandExecutionError when visible cards render but parser finds no flight anchors', async () => {
+        const page = createPageMock(['content', 2, []]);
+        await expect(cmd.func(page, { from: 'PEK', to: 'SHA', date: '2026-06-15', limit: 5 }))
+            .rejects.toMatchObject({
+                code: 'COMMAND_EXEC',
+                message: expect.stringContaining('parser did not find required flight anchors'),
+            });
     });
 
     it('throws CommandExecutionError when flight render waits timeout or extraction is malformed', async () => {

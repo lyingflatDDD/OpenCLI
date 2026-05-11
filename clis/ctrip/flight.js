@@ -96,13 +96,16 @@ cli({
             throw new CommandExecutionError(`Ctrip flight page did not render flight cards (state=${String(waitResult)})`);
         }
         // Scroll until enough flight cards rendered (Ctrip lazy-loads beyond ~8).
-        await page.evaluate(buildScrollUntilJs('.flight-list > span > div', limit));
+        const renderedCardCount = await page.evaluate(buildScrollUntilJs('.flight-list > span > div', limit));
         const raw = await page.evaluate(buildFlightExtractJs());
         if (!Array.isArray(raw)) {
             throw new CommandExecutionError('Ctrip flight DOM extraction returned malformed rows');
         }
         const rows = raw;
         if (rows.length === 0) {
+            if (Number(renderedCardCount) > 0) {
+                throw new CommandExecutionError('Ctrip flight cards rendered but parser did not find required flight anchors');
+            }
             throw new EmptyResultError('ctrip flight', `No flights for ${fromCode}→${toCode} on ${date}`);
         }
         const completeRows = rows

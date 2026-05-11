@@ -45,7 +45,7 @@ const WAIT_FOR_SSR_JS = `
     const detect = () => {
       if (location.pathname.includes('captcha') || /验证码|verify the human/i.test(document.body?.innerText || '')) return 'captcha';
       const hotels = window.__NEXT_DATA__?.props?.pageProps?.initListData?.hotelList;
-      if (Array.isArray(hotels) && hotels.length > 0) return 'content';
+      if (Array.isArray(hotels)) return 'content';
       return null;
     };
     const found = detect();
