@@ -13,7 +13,7 @@
  *
  * Anti-bot: not detected on first-page navigation (PR #1481 recon 2026-05-12).
  */
-import { ArgumentError, AuthRequiredError, EmptyResultError } from '@jackwener/opencli/errors';
+import { ArgumentError, AuthRequiredError, CommandExecutionError, EmptyResultError } from '@jackwener/opencli/errors';
 import { cli, Strategy } from '@jackwener/opencli/registry';
 import { mapHotelRow, parseCityId, parseIsoDate } from './utils.js';
 
@@ -108,14 +108,24 @@ cli({
         if (waitResult === 'captcha') {
             throw new AuthRequiredError('hotels.ctrip.com', 'Ctrip is asking for a captcha; complete it in your browser session and retry');
         }
+        if (waitResult !== 'content') {
+            throw new CommandExecutionError(`Ctrip hotel-search page did not expose SSR hotel list (state=${String(waitResult)})`);
+        }
         const raw = await page.evaluate(EXTRACT_HOTELS_JS);
-        if (!Array.isArray(raw) || raw.length === 0) {
+        if (!Array.isArray(raw)) {
+            throw new CommandExecutionError('Ctrip hotel-search returned malformed SSR hotel list');
+        }
+        if (raw.length === 0) {
             throw new EmptyResultError('ctrip hotel-search', `No hotels for city=${cityId} on ${checkin} → ${checkout}`);
         }
-        return raw
+        const rows = raw
             .map((entry, i) => mapHotelRow(entry, i))
             .filter((row) => row.hotelId && row.name)
             .slice(0, limit);
+        if (rows.length === 0) {
+            throw new CommandExecutionError('Ctrip hotel-search SSR rows were missing required hotelId/name anchors');
+        }
+        return rows;
     },
 });
 

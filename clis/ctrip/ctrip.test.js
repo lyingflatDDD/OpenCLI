@@ -452,6 +452,13 @@ describe('ctrip hotel-search command (registry-level)', () => {
             .rejects.toMatchObject({ code: 'EMPTY_RESULT' });
     });
 
+    it('throws CommandExecutionError when SSR state times out or is malformed', async () => {
+        await expect(cmd.func(createPageMock(['timeout']), { city: 2, checkin: '2026-06-15', checkout: '2026-06-17', limit: 5 }))
+            .rejects.toMatchObject({ code: 'COMMAND_EXEC', message: expect.stringContaining('did not expose SSR hotel list') });
+        await expect(cmd.func(createPageMock(['content', { hotelList: [] }]), { city: 2, checkin: '2026-06-15', checkout: '2026-06-17', limit: 5 }))
+            .rejects.toMatchObject({ code: 'COMMAND_EXEC', message: expect.stringContaining('malformed SSR hotel list') });
+    });
+
     it('maps SSR rows and respects --limit', async () => {
         const page = createPageMock([
             'content',
@@ -477,6 +484,13 @@ describe('ctrip hotel-search command (registry-level)', () => {
         const rows = await cmd.func(page, { city: 2, checkin: '2026-06-15', checkout: '2026-06-17', limit: 5 });
         expect(rows).toHaveLength(1);
         expect(rows[0].hotelId).toBe('106876528');
+    });
+
+    it('throws CommandExecutionError when all SSR rows miss required anchors', async () => {
+        const incomplete = { hotelInfo: { summary: {}, nameInfo: { name: 'No-id' } }, roomInfo: [] };
+        const page = createPageMock(['content', [incomplete]]);
+        await expect(cmd.func(page, { city: 2, checkin: '2026-06-15', checkout: '2026-06-17', limit: 5 }))
+            .rejects.toMatchObject({ code: 'COMMAND_EXEC', message: expect.stringContaining('required hotelId/name anchors') });
     });
 });
 
@@ -531,6 +545,13 @@ describe('ctrip flight command (registry-level)', () => {
             .rejects.toMatchObject({ code: 'EMPTY_RESULT' });
     });
 
+    it('throws CommandExecutionError when flight render waits timeout or extraction is malformed', async () => {
+        await expect(cmd.func(createPageMock(['timeout']), { from: 'PEK', to: 'SHA', date: '2026-06-15', limit: 5 }))
+            .rejects.toMatchObject({ code: 'COMMAND_EXEC', message: expect.stringContaining('did not render flight cards') });
+        await expect(cmd.func(createPageMock(['content', 1, { rows: [] }]), { from: 'PEK', to: 'SHA', date: '2026-06-15', limit: 5 }))
+            .rejects.toMatchObject({ code: 'COMMAND_EXEC', message: expect.stringContaining('malformed rows') });
+    });
+
     it('builds URL with lowercase IATA codes and Y_S_C_F cabin', async () => {
         const page = createPageMock(['content', 1, [FLIGHT_RAW]]);
         await cmd.func(page, { from: 'pek', to: 'sha', date: '2026-06-15', limit: 1 });
@@ -570,6 +591,12 @@ describe('ctrip flight command (registry-level)', () => {
         expect(rows).toHaveLength(1);
         expect(rows[0].departureTime).toBe('07:50');
     });
+
+    it('throws CommandExecutionError when every flight row misses core anchors', async () => {
+        const page = createPageMock(['content', 2, [{ ...FLIGHT_RAW, departureAirport: '' }, { ...FLIGHT_RAW, flightNo: null }]]);
+        await expect(cmd.func(page, { from: 'PEK', to: 'SHA', date: '2026-06-15', limit: 5 }))
+            .rejects.toMatchObject({ code: 'COMMAND_EXEC', message: expect.stringContaining('required airline/flight/time/airport anchors') });
+    });
 });
 
 describe('ctrip buildScrollUntilJs', () => {
@@ -579,11 +606,19 @@ describe('ctrip buildScrollUntilJs', () => {
         expect(js).toContain('countItems() >= 20');
         expect(js).toContain('i < 8');
         expect(js).toContain('plateauRounds');
+        expect(js).toContain('getBoundingClientRect');
+        expect(js).toContain('getComputedStyle');
     });
     it('respects a custom maxScrolls override', () => {
         const js = buildScrollUntilJs('.hotel-card', 50, 3);
         expect(js).toContain('countItems() >= 50');
         expect(js).toContain('i < 3');
+    });
+    it('rejects unsafe target / maxScrolls values before interpolation', () => {
+        expect(() => buildScrollUntilJs('.hotel-card', 0)).toThrow('targetCount');
+        expect(() => buildScrollUntilJs('.hotel-card', 101)).toThrow('targetCount');
+        expect(() => buildScrollUntilJs('.hotel-card', 10, 0)).toThrow('maxScrolls');
+        expect(() => buildScrollUntilJs('.hotel-card', 10, 31)).toThrow('maxScrolls');
     });
 });
 
@@ -645,5 +680,18 @@ describe('ctrip buildFlightExtractJs (JSDOM)', () => {
     it('returns empty array when there are no flight cards (not a sentinel row)', () => {
         const rows = runExtract('<div class="flight-list"></div>');
         expect(rows).toEqual([]);
+    });
+
+    it('does not fabricate rows from non-flight cards with two times', () => {
+        const html = `
+          <div class="flight-list"><span>
+            <div>
+              <span>筛选</span><span>价格排序</span><span>推荐</span>
+              <span>08:00</span><span>出发</span><span>10:00</span><span>到达</span>
+              <span>¥</span><span>520</span><span>经济舱</span>
+            </div>
+          </span></div>
+        `;
+        expect(runExtract(html)).toEqual([]);
     });
 });

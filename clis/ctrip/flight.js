@@ -10,7 +10,7 @@
  * Round-trip + advanced filters (airline whitelist, cabin selection beyond
  * 全舱位) are out of scope for v1 — track in #1481 follow-up if requested.
  */
-import { ArgumentError, AuthRequiredError, EmptyResultError } from '@jackwener/opencli/errors';
+import { ArgumentError, AuthRequiredError, CommandExecutionError, EmptyResultError } from '@jackwener/opencli/errors';
 import { cli, Strategy } from '@jackwener/opencli/registry';
 import { buildFlightExtractJs, buildScrollUntilJs, parseIataCode, parseIsoDate } from './utils.js';
 
@@ -92,15 +92,21 @@ cli({
         if (waitResult === 'captcha') {
             throw new AuthRequiredError('flights.ctrip.com', 'Ctrip is asking for a captcha; complete it in your browser session and retry');
         }
+        if (waitResult !== 'content') {
+            throw new CommandExecutionError(`Ctrip flight page did not render flight cards (state=${String(waitResult)})`);
+        }
         // Scroll until enough flight cards rendered (Ctrip lazy-loads beyond ~8).
         await page.evaluate(buildScrollUntilJs('.flight-list > span > div', limit));
         const raw = await page.evaluate(buildFlightExtractJs());
-        const rows = Array.isArray(raw) ? raw : [];
+        if (!Array.isArray(raw)) {
+            throw new CommandExecutionError('Ctrip flight DOM extraction returned malformed rows');
+        }
+        const rows = raw;
         if (rows.length === 0) {
             throw new EmptyResultError('ctrip flight', `No flights for ${fromCode}→${toCode} on ${date}`);
         }
-        return rows
-            .filter((r) => r.departureTime && r.arrivalTime && r.airline)
+        const completeRows = rows
+            .filter((r) => r.departureTime && r.departureAirport && r.arrivalTime && r.arrivalAirport && r.airline && r.flightNo)
             .slice(0, limit)
             .map((r, i) => ({
                 rank: i + 1,
@@ -117,6 +123,10 @@ cli({
                 cabin: r.cabin,
                 url: searchUrl,
             }));
+        if (completeRows.length === 0) {
+            throw new CommandExecutionError('Ctrip flight rows were missing required airline/flight/time/airport anchors');
+        }
+        return completeRows;
     },
 });
 

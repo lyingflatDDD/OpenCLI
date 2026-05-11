@@ -336,6 +336,7 @@ export function buildFlightExtractJs() {
         const isTime = (s) => /^([01]?\\d|2[0-3]):[0-5]\\d$/.test(s);
         const isCurrency = (s) => /^[¥$€£]$/.test(s);
         const isPriceDigits = (s) => /^\\d+([.,]\\d+)?$/.test(s);
+        const isFlightNo = (s) => /^[A-Z0-9]{2}\\d{3,4}[A-Z]?$/.test(s);
 
         const rows = [];
         document.querySelectorAll('.flight-list > span > div').forEach((card) => {
@@ -359,6 +360,7 @@ export function buildFlightExtractJs() {
           if (firstTimeIdx < 1) return;
           const airline = chunks[0];
           const flightNo = chunks[1] || null;
+          if (!airline || !isFlightNo(flightNo)) return;
           const aircraft = chunks[2] && !isTime(chunks[2]) ? chunks[2] : null;
 
           const depTime = chunks[firstTimeIdx];
@@ -368,6 +370,7 @@ export function buildFlightExtractJs() {
           if (arrTimeIdx < 0) return;
           const arrTime = chunks[arrTimeIdx];
           const arrAirport = chunks[arrTimeIdx + 1] || null;
+          if (!depAirport || !arrAirport) return;
           // Optional terminal chunk right after arrAirport (matches /^T\\d$/ or single letter)
           let terminal = null;
           if (arrTimeIdx + 2 < chunks.length && /^T\\d$/.test(chunks[arrTimeIdx + 2])) {
@@ -419,10 +422,22 @@ export function buildFlightExtractJs() {
  * `section.note-item`; this generic version takes a selector.)
  */
 export function buildScrollUntilJs(rowSelector, targetCount, maxScrolls = 8) {
+    if (!Number.isInteger(targetCount) || targetCount < 1 || targetCount > 100) {
+        throw new ArgumentError(`targetCount must be an integer between 1 and 100, got ${JSON.stringify(targetCount)}`);
+    }
+    if (!Number.isInteger(maxScrolls) || maxScrolls < 1 || maxScrolls > 30) {
+        throw new ArgumentError(`maxScrolls must be an integer between 1 and 30, got ${JSON.stringify(maxScrolls)}`);
+    }
     return `
       (async () => {
         const sel = ${JSON.stringify(rowSelector)};
-        const countItems = () => document.querySelectorAll(sel).length;
+        const isVisible = (el) => {
+          const style = window.getComputedStyle(el);
+          if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0) return false;
+          const rect = el.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0;
+        };
+        const countItems = () => Array.from(document.querySelectorAll(sel)).filter(isVisible).length;
         let lastCount = countItems();
         let plateauRounds = 0;
         for (let i = 0; i < ${maxScrolls}; i++) {
