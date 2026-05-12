@@ -231,12 +231,42 @@ function compactCommanderOptions(options: readonly CommanderOption[]): OptionSpe
     .filter((option): option is OptionSpec => option !== null);
 }
 
+/**
+ * Extracts a positional placeholder that should appear immediately after this
+ * command's name in user-facing path strings. Reads the leading positional
+ * (e.g. `<session>`) from a `.usage()` override; commands without a positional
+ * override return `null` so the path stays as-is.
+ *
+ * Example: `browser` declares `.usage('<session> <command> [options]')`,
+ * so `commanderPath(browserClickCmd)` becomes
+ * `['opencli', 'browser', '<session>', 'click']`.
+ */
+export function leadingPositionalFromUsage(command: Command): string | null {
+  const usage = (command as Command & { _usage?: string })._usage;
+  if (!usage) return null;
+  const match = usage.match(/^\s*(<[^>]+>)/);
+  return match ? match[1] : null;
+}
+
 function commanderPath(command: Command): string[] {
   const parts: string[] = [];
   let current: Command | null = command;
   while (current) {
     const name = current.name();
-    if (name) parts.push(name);
+    if (name) {
+      parts.push(name);
+      // If this command declares a leading-positional usage override AND we
+      // have already collected a child name below it, the positional must
+      // appear between this command and the child (i.e. before the names
+      // already collected). parts is in reverse order, so push to the end.
+      const positional = leadingPositionalFromUsage(current);
+      if (positional && parts.length > 1) {
+        // We collected child names first (reverse order). Move them up by one
+        // and put the positional at index `parts.length - 2` so reverse()
+        // places it between this command and the first child name.
+        parts.splice(parts.length - 1, 0, positional);
+      }
+    }
     current = current.parent;
   }
   return parts.reverse();
@@ -245,7 +275,10 @@ function commanderPath(command: Command): string[] {
 function commandPathFromRoot(namespaceRoot: Command, command: Command): string[] {
   const rootPath = commanderPath(namespaceRoot);
   const commandPath = commanderPath(command);
-  return commandPath.slice(rootPath.length);
+  // Strip placeholder positional segments (e.g. `<session>`) from the relative
+  // name so agents can still address subcommands by their leaf name. Display
+  // paths in `command` / `usage` still include the placeholders.
+  return commandPath.slice(rootPath.length).filter(part => !/^<.+>$/.test(part));
 }
 
 function collectLeafCommands(command: Command): Command[] {

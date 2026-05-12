@@ -19,7 +19,7 @@ import { PKG_VERSION } from './version.js';
 import { printCompletionScript } from './completion.js';
 import { loadExternalClis, executeExternalCli, installExternalCli, registerExternalCli, isBinaryInstalled } from './external.js';
 import { registerAllCommands } from './commanderAdapter.js';
-import { classifyAdapter, formatRootAdapterHelpText, installCommanderNamespaceStructuredHelp, installStructuredHelp, rootHelpData, type RootAdapterGroups } from './help.js';
+import { classifyAdapter, formatRootAdapterHelpText, installCommanderNamespaceStructuredHelp, installStructuredHelp, leadingPositionalFromUsage, rootHelpData, type RootAdapterGroups } from './help.js';
 import { EXIT_CODES, getErrorMessage, BrowserConnectError } from './errors.js';
 import { TargetError, type TargetErrorCode } from './browser/target-errors.js';
 import { resolveTargetJs, getTextResolvedJs, getValueResolvedJs, getAttributesResolvedJs, selectResolvedJs, isAutocompleteResolvedJs, type ResolveOptions, type TargetMatchLevel } from './browser/target-resolver.js';
@@ -3327,6 +3327,28 @@ cli({
   program.configureHelp({
     visibleCommands: (command) => command.commands.filter(child => command !== program || !adapterNameSet.has(child.name())),
   });
+  // When an ancestor command declares a leading positional via `.usage(...)`
+  // (e.g. `browser` -> `<session> <command> [options]`), inject the positional
+  // between that ancestor's name and the next path segment so the help Usage
+  // line is accurate: `Usage: opencli browser <session> click [target] [options]`
+  // instead of `opencli browser click [target] [options]`. Commander does NOT
+  // inherit configureHelp into subcommands, so we walk the descendant tree and
+  // apply the override on each.
+  const ancestorAwareCommandUsage = (cmd: Command): string => {
+    const ancestors: string[] = [];
+    let ancestor: Command | null = cmd.parent;
+    while (ancestor) {
+      const positional = leadingPositionalFromUsage(ancestor);
+      ancestors.unshift(positional ? `${ancestor.name()} ${positional}` : ancestor.name());
+      ancestor = ancestor.parent;
+    }
+    return [...ancestors, cmd.name(), cmd.usage()].filter(Boolean).join(' ').trim();
+  };
+  function applyAncestorAwareUsage(cmd: Command): void {
+    cmd.configureHelp({ commandUsage: ancestorAwareCommandUsage });
+    for (const sub of cmd.commands) applyAncestorAwareUsage(sub);
+  }
+  applyAncestorAwareUsage(browser);
   installStructuredHelp(program, () => rootHelpData(program, adapterGroups), () => formatRootAdapterHelpText(adapterGroups));
 
   // ── Unknown command fallback ──────────────────────────────────────────────
